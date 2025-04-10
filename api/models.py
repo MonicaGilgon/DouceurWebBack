@@ -1,4 +1,6 @@
 from django.db import models
+from django.contrib.auth.models import AbstractUser
+
 
 class Rol(models.Model):
     nombre = models.CharField(max_length=100)
@@ -13,12 +15,15 @@ class Persona(models.Model):
 
     class Meta:
         abstract = True
+    
 
-class Usuario(Persona):
+class Usuario(AbstractUser, Persona):
     correo = models.EmailField(unique=True)
-    contrasenia = models.CharField(max_length=128)
     rol = models.ForeignKey(Rol, on_delete=models.CASCADE)
-    estado = models.BooleanField(default=True)
+    estado = models.BooleanField(default=True)  
+
+    USERNAME_FIELD = 'correo'  
+    REQUIRED_FIELDS = ['nombre_completo']
 
     def __str__(self):
         return self.correo
@@ -37,3 +42,13 @@ class Usuario(Persona):
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.save()
+
+    @classmethod
+    def obtener_clientes(cls):
+        cliente_rol = Rol.objects.get(nombre="cliente")
+        return cls.objects.filter(rol=cliente_rol)
+
+    @classmethod
+    def obtener_vendedores(cls):
+        vendedor_rol = Rol.objects.get(nombre="vendedor")
+        return cls.objects.filter(rol=vendedor_rol)
