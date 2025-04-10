@@ -23,25 +23,10 @@ class Usuario(AbstractUser, Persona):
     estado = models.BooleanField(default=True)  
 
     USERNAME_FIELD = 'correo'  
-    REQUIRED_FIELDS = ['nombre_completo']
+    REQUIRED_FIELDS = []
 
     def __str__(self):
         return self.correo
-
-    def iniciarSesion(self):
-        pass
-
-    def cerrarSesion(self):
-        pass
-
-    def reestablecerContrasenia(self, nueva_contrasenia):
-        self.contrasenia = nueva_contrasenia
-        self.save()
-
-    def actualizarPerfil(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
-        self.save()
 
     @classmethod
     def obtener_clientes(cls):

@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, generics
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from .serializers import (RolSerializer, UsuarioSerializer)
 from .models import (Rol, Usuario)
@@ -39,6 +39,7 @@ class CrearCliente(APIView):
             nuevo_cliente = Usuario(
                 nombre_completo=nombre,
                 correo=correo,
+                username=correo,
                 rol=rol_cliente,
                 estado=True
             )
