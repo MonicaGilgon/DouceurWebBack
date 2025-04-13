@@ -37,3 +37,12 @@ class Usuario(AbstractUser, Persona):
     def obtener_vendedores(cls):
         vendedor_rol = Rol.objects.get(nombre="vendedor")
         return cls.objects.filter(rol=vendedor_rol)
+    
+
+
+class CategoriaArticulo(models.Model):
+    nombre = models.CharField(max_length=100)
+    estado = models.BooleanField(default=True)
+
+    def __str__(self):
+        return self.nombre
