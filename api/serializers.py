@@ -50,4 +50,3 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 
-
