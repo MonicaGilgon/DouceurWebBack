@@ -27,7 +27,13 @@ urlpatterns=[
    path('editar-categoria-articulo/<int:categoria_articulo_id>/', views.EditarCategoriaArticulo.as_view(), name='editar-categoria-articulo'),
    #path('articulos/cambio_estado/<int:articulo_id>/', views.ToggleArticuloEstadoAPIView.as_view(), name='toggle-articulo-estado'),
     
-   
+    #URL categorias producto base
+    path('crear-categoria-producto-base/', views.CrearCategoriaProductoBase.as_view(), name='crear-categoria-producto-base'),
+    path('listar-categoria-producto-base/', views.ListarCategoriaProductoBase.as_view(), name='listar-categoria-producto-base'),
+    path('cambiar-estado-categoria-producto-base/<int:categoria_articulo_id>/', views.CambiarEstadoCategoriaProductoBase.as_view(), name='cambiar-estado-categoria-producto-base'),
+    path('editar-categoria-producto-base/<int:categoria_PB_id>/', views.EditarCategoriaProductoBase.as_view(), name='editar-categoria-producto-base'),
+    
+
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

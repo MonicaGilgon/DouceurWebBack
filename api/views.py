@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer)
-from .models import (Rol, Usuario, CategoriaArticulo)
+from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, CategoriaProductoBaseSerializer)
+from .models import (Rol, Usuario, CategoriaArticulo, CategoriaProductoBase)
 from django.http import HttpResponse, JsonResponse
 from django.contrib import messages
 from rest_framework.response import Response
@@ -12,6 +12,8 @@ from django.shortcuts import redirect, get_object_or_404
 from django.middleware.csrf import get_token
 import json
 from django.db import IntegrityError
+from django.db.models import Q
+
 
 
 
@@ -315,6 +317,103 @@ class EditarCategoriaArticulo(APIView):
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
 
 
+
+#///////////////////////////////////////////////////////////////
+#CATEGORIA PRODUCTO BASE
+#Crear categoria producto base
+class CrearCategoriaProductoBase(APIView):
+    def post(self, request): 
+        try:
+            id = request.data.get('id')  
+            nombre = request.data.get('nombre')     
+            # Verificar si el id o el nombre ya existen
+            if CategoriaProductoBase.objects.filter(Q(id=id) | Q(nombre=nombre)).exists():
+                return JsonResponse({"error": "Ya existe una categoría artículo con este id o nombre."}, status=400)       
+            nueva_categoria_producto_base = CategoriaProductoBase(
+                id=id,
+                nombre=nombre,
+                estado=True
+            )
+            nueva_categoria_producto_base.save()
+            return JsonResponse({"success": f"Categoría producto base {nueva_categoria_producto_base.nombre} creada correctamente."}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": f"Error al crear la categoría producto base: {str(e)}"}, status=500)
+     
+
+      
+#Listar categoria producto base
+class ListarCategoriaProductoBase(APIView):
+    def get(self, request): 
+        try:
+            categorias = CategoriaProductoBase.objects.all()
+            serializer = CategoriaProductoBaseSerializer(categorias, many=True)
+            return Response(serializer.data, status=200)
+        except CategoriaProductoBase.DoesNotExist:
+            return JsonResponse([], status=404)
+
+    def post(self, request):
+        serializer = CategoriaProductoBaseSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=201)  
+        return Response(serializer.errors, status=400) 
+
+
+#Cabiar estado categoria producto base
+class CambiarEstadoCategoriaProductoBase(APIView):
+    def patch(self, request, categoria_pb_id):
+        categoriaPB = get_object_or_404(CategoriaProductoBase, id=categoria_pb_id)
+        estado = request.data.get('estado')
+        if estado is not None:
+            categoriaPB.estado = bool(estado)
+            categoriaPB.save()
+            return Response({'status': 'ok', 'estado': categoriaPB.estado}, status=status.HTTP_200_OK)
+        return Response(
+            {'status': 'error', 'message': 'El campo activo es requerido.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+
+
+#Editar categoria producto base
+class EditarCategoriaProductoBase(APIView):
+    def get(self, request, categoria_PB_id):
+        categoria_PB = get_object_or_404(CategoriaProductoBase, id=categoria_PB_id)
+        csrf_token = get_token(request)
+        return JsonResponse({
+            'id': categoria_PB.id,
+            'nombre': categoria_PB.nombre,
+            'estado': categoria_PB.estado,
+            'csrf_token': csrf_token
+        })
+
+    def put(self, request, categoria_PB_id):
+        categoria_PB = get_object_or_404(CategoriaProductoBase, id=categoria_PB_id)        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        nombre = data.get('nombre')    
+        if nombre is None:
+            return JsonResponse({'error': 'El campo nombre no puede estar vacío.'}, status=400)
+        
+        categoria_PB.nombre = nombre
+        
+        try:
+            categoria_PB.save()
+            return JsonResponse({'success': True, 'message': f"Categoría Artículo {categoria_PB.nombre} editado correctamente."}, status=200)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)        
+
+    def post(self, request, categoria_PB_id):
+        return JsonResponse({'error': 'Método no permitido.'}, status=405)
+""" 
+class ProductosPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        productosBase = ProductoBase.objects.filter(categoriaProductoBase=categoria_id)
+        serializer = ProductoBaseSerializer(productosBase, many=True)
+        return Response(serializer.data)
+ """
 
 
 
