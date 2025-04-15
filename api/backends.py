@@ -3,12 +3,19 @@ from django.contrib.auth import get_user_model
 
 class CorreoBackend(ModelBackend):
     def authenticate(self, request, username=None, password=None, **kwargs):
-        Usuario = get_user_model()
+        UserModel = get_user_model()
         try:
-            user = Usuario.objects.get(correo=username)
-        except Usuario.DoesNotExist:
+            user = UserModel.objects.get(correo=username)
+        except UserModel.DoesNotExist:
             return None
 
-        if user.check_password(password) and self.user_can_authenticate(user):
+        if user.check_password(password) and user.is_active:
             return user
         return None
+
+    def get_user(self, user_id):
+        UserModel = get_user_model()
+        try:
+            return UserModel.objects.get(pk=user_id)
+        except UserModel.DoesNotExist:
+            return None
