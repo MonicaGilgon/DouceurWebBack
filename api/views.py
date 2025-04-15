@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer)
-from .models import (Rol, Usuario, CategoriaArticulo)
+from .models import (Rol, Usuario, CategoriaArticulo, Order)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
 from django.contrib.auth.hashers import make_password
@@ -27,15 +27,15 @@ from django.utils.decorators import method_decorator
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
+from django.core.validators import EmailValidator
+from django.core.exceptions import ValidationError
 
- #INDEX
+# INDEX
 def index(request):
     return HttpResponse("Bienvenido a la API de Douceur")
 
-
-#////////////////////////////////////////////////////////
-#CLIENTES
-#REGISTRO DE CLIENTES
+# CLIENTES
+# REGISTRO DE CLIENTES
 class CrearCliente(APIView):    
     def post(self, request): 
         try:
@@ -71,9 +71,6 @@ class CrearCliente(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Error al crear el cliente: {str(e)}"}, status=500)
 
-
-
-
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -102,7 +99,6 @@ class LoginView(APIView):
             }, status=200)
         return Response({"error": "Credenciales inválidas"}, status=401)
 
-
 class RolViewSet(viewsets.ModelViewSet):
     queryset = Rol.objects.all()
     serializer_class = RolSerializer
@@ -111,10 +107,7 @@ class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
 
-
-#/////////////////////////////////////////////////
-#CATEGORIA_ARTICULO
-#Crear categoria articulo
+# CATEGORIA_ARTICULO
 class CrearCategoriaArticulo(APIView):
     def post(self, request): 
         try:
@@ -133,7 +126,6 @@ class CrearCategoriaArticulo(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Error al crear la categoría artículo: {str(e)}"}, status=500)
      
-#Listar categoria articulo
 class ListarCategoriaArticulo(APIView):
     def get(self, request):
         try:
@@ -150,8 +142,6 @@ class ListarCategoriaArticulo(APIView):
             return Response(serializer.data, status=201)  
         return Response(serializer.errors, status=400) 
 
-
-#Cambiar estado categoria articulo
 class CambiarEstadoCategoriaArticulo(APIView):
     def patch(self, request, categoria_articulo_id):
         categoriaArticulo = get_object_or_404(CategoriaArticulo, id=categoria_articulo_id)
@@ -165,8 +155,6 @@ class CambiarEstadoCategoriaArticulo(APIView):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-
-#Editar categoria articulo
 class EditarCategoriaArticulo(APIView):
     def get(self, request, categoria_articulo_id):
         categoria_articulo = get_object_or_404(CategoriaArticulo, id=categoria_articulo_id)
@@ -198,8 +186,6 @@ class EditarCategoriaArticulo(APIView):
 
     def post(self, request, categoria_articulo_id):
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
-    
-
 
 # Validar contraseña según las reglas (≥8 caracteres, 1 mayúscula, 1 minúscula, 1 número)
 def validate_password_strength(password):
@@ -292,8 +278,84 @@ class ProfileView(APIView):
 
     def get(self, request):
         user = request.user
+       
         serializer = UsuarioSerializer(user)
-        return Response(serializer.data)
+        return Response(serializer.data, status=200)
+
+    def patch(self, request):
+        user = request.user
+        data = request.data
+
+        # Campos permitidos para actualizar
+        nombre_completo = data.get('nombre_completo', user.nombre_completo)
+        direccion = data.get('direccion', user.direccion)
+        telefono = data.get('telefono', user.telefono)
+        correo = data.get('correo', user.correo)
+
+        # Validaciones
+        # Campos no vacíos
+        if not nombre_completo:
+            return Response({"error": "El nombre no puede estar vacío."}, status=400)
+        if not telefono:
+            return Response({"error": "El teléfono no puede estar vacío."}, status=400)
+        if not correo:
+            return Response({"error": "El correo no puede estar vacío."}, status=400)
+
+        # Validar formato de correo
+        email_validator = EmailValidator()
+        try:
+            email_validator(correo)
+        except ValidationError:
+            return Response({"error": "El correo electrónico no tiene un formato válido."}, status=400)
+
+        # Validar unicidad de correo y teléfono
+        if correo != user.correo and Usuario.objects.filter(correo=correo).exists():
+            return Response({"error": "Ya existe un usuario con este correo."}, status=400)
+        if telefono != user.telefono and Usuario.objects.filter(telefono=telefono).exists():
+            return Response({"error": "Ya existe un usuario con este teléfono."}, status=400)
+
+        # Actualizar campos
+        user.nombre_completo = nombre_completo
+        user.direccion = direccion
+        user.telefono = telefono
+        user.correo = correo
+        user.username = correo  # Actualizar username ya que es el mismo que correo
+
+        try:
+            user.save()
+            serializer = UsuarioSerializer(user)
+            return Response({"message": "Perfil actualizado correctamente.", "data": serializer.data}, status=200)
+        except Exception as e:
+            return Response({"error": f"Error al actualizar el perfil: {str(e)}"}, status=500)
+
+    def post(self, request):
+        user = request.user
+        current_password = request.data.get('current_password')
+        new_password = request.data.get('new_password')
+        confirm_password = request.data.get('confirm_password')
+
+        # Validar que todos los campos estén presentes
+        if not all([current_password, new_password, confirm_password]):
+            return Response({"error": "Todos los campos son obligatorios."}, status=400)
+
+        # Validar contraseña actual
+        if not check_password(current_password, user.password):
+            return Response({"error": "La contraseña actual es incorrecta."}, status=400)
+
+        # Validar que las nuevas contraseñas coincidan
+        if new_password != confirm_password:
+            return Response({"error": "Las nuevas contraseñas no coinciden."}, status=400)
+
+        # Validar la fuerza de la nueva contraseña
+        is_valid, error_message = validate_password_strength(new_password)
+        if not is_valid:
+            return Response({"error": error_message}, status=400)
+
+        # Actualizar contraseña
+        user.set_password(new_password)
+        user.save()
+
+        return Response({"message": "Contraseña actualizada correctamente."}, status=200)
 
 
 

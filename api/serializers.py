@@ -33,7 +33,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Order
-        fields = ['id', 'order_date', 'total_amount', 'items']
+        fields = ['id', 'order_date', 'total_amount', 'status', 'items']
 
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(source='rol.nombre')
@@ -42,7 +42,6 @@ class UsuarioSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders']
-
 
 
 
