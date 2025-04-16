@@ -1,0 +1,23 @@
+# Ignorar entornos virtuales
+.venv/
+venv/
+.env/
+env/
+
+# Ignorar caché de Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Ignorar archivos de configuración de Django
+*.sqlite3
+db.sqlite3
+
+# Ignorar configuraciones del editor
+.vscode/
+.idea/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db

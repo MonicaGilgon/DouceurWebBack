@@ -96,7 +96,7 @@ class LoginView(APIView):
             except Usuario.DoesNotExist:
                 return Response({"error": "No existe ninguna cuenta registrada con este correo"}, status=404) 
 
-""" 
+ 
 #CLIENTE
 # Vista personalizada para listar clientes
 class ListarClientes(APIView):
@@ -108,6 +108,7 @@ class ListarClientes(APIView):
         except Rol.DoesNotExist:
             return Response([], status=404)
         
+"""            
 #///////////////////////////////////////////////////////////////////////
 #VENDEDOR
 # VISTA LISTAR VENDEDORES

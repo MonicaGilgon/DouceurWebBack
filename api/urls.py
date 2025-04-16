@@ -30,7 +30,8 @@ urlpatterns=[
    path('editar-categoria-articulo/<int:categoria_articulo_id>/', views.EditarCategoriaArticulo.as_view(), name='editar-categoria-articulo'),
    #path('articulos/cambio_estado/<int:articulo_id>/', views.ToggleArticuloEstadoAPIView.as_view(), name='toggle-articulo-estado'),
     
-   
+   #URL listar-clientes
+   path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
