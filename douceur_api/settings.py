@@ -161,3 +161,5 @@ DEFAULT_FROM_EMAIL = 'Douceurasistencia@gmail.com'
 PASSWORD_RESET_TIMEOUT = 900
 
 
+LOGIN_URL = '/login/'  
+LOGIN_REDIRECT_URL = '/admin/' 

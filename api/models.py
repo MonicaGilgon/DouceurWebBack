@@ -16,7 +16,6 @@ class Persona(models.Model):
         abstract = True
 
 class Usuario(AbstractUser, Persona):
-    username = models.CharField(max_length=150, unique=True, blank=True, null=True)
     correo = models.EmailField(unique=True)
     rol = models.ForeignKey(Rol, on_delete=models.CASCADE)
     estado = models.BooleanField(default=True)

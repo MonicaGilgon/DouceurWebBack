@@ -4,13 +4,11 @@ from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSer
 from .models import (Rol, Usuario, CategoriaArticulo, CategoriaProductoBase, Order)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
-from django.contrib.auth.hashers import make_password
-from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import check_password
 from django.shortcuts import redirect, get_object_or_404
 from django.middleware.csrf import get_token
-from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+from rest_framework.permissions import IsAuthenticated
 import json
 from django.db import IntegrityError
 from django.core.mail import send_mail
@@ -18,17 +16,13 @@ from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.conf import settings
-from rest_framework.permissions import IsAuthenticated
 import re
-from rest_framework import routers
-from django.contrib.auth import login
-from django.views.decorators.csrf import ensure_csrf_cookie
-from django.utils.decorators import method_decorator
 from django.db.models import Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
+from django.contrib.auth.decorators import login_required
 
 # INDEX
 def index(request):
@@ -106,86 +100,6 @@ class RolViewSet(viewsets.ModelViewSet):
 class UsuarioViewSet(viewsets.ModelViewSet):
     queryset = Usuario.objects.all()
     serializer_class = UsuarioSerializer
-
-# CATEGORIA_ARTICULO
-class CrearCategoriaArticulo(APIView):
-    def post(self, request): 
-        try:
-            id = request.data.get('id')  
-            nombre = request.data.get('nombre')         
-            # Verificar si el id o el nombre ya existen
-            if CategoriaArticulo.objects.filter(Q(id=id) | Q(nombre=nombre)).exists():
-                return JsonResponse({"error": "Ya existe una categoría artículo con este id o nombre."}, status=400)       
-            nueva_categoria_articulo = CategoriaArticulo(
-                id=id,
-                nombre=nombre,
-                estado=True
-            )
-            nueva_categoria_articulo.save()
-            return JsonResponse({"success": f"Categoría artículo {nueva_categoria_articulo.nombre} creada correctamente."}, status=201)
-        except Exception as e:
-            return JsonResponse({"error": f"Error al crear la categoría artículo: {str(e)}"}, status=500)
-     
-class ListarCategoriaArticulo(APIView):
-    def get(self, request):
-        try:
-            categorias = CategoriaArticulo.objects.all()
-            serializer = CategoriaArticuloSerializer(categorias, many=True)
-            return Response(serializer.data, status=200)
-        except CategoriaArticulo.DoesNotExist:
-            return JsonResponse([], status=404)
-
-    def post(self, request):
-        serializer = CategoriaArticuloSerializer(data=request.data)
-        if serializer.is_valid():
-            serializer.save() 
-            return Response(serializer.data, status=201)  
-        return Response(serializer.errors, status=400) 
-
-class CambiarEstadoCategoriaArticulo(APIView):
-    def patch(self, request, categoria_articulo_id):
-        categoriaArticulo = get_object_or_404(CategoriaArticulo, id=categoria_articulo_id)
-        estado = request.data.get('estado')
-        if estado is not None:
-            categoriaArticulo.estado = bool(estado)
-            categoriaArticulo.save()
-            return Response({'status': 'ok', 'estado': categoriaArticulo.estado}, status=status.HTTP_200_OK)
-        return Response(
-            {'status': 'error', 'message': 'El campo activo es requerido.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-class EditarCategoriaArticulo(APIView):
-    def get(self, request, categoria_articulo_id):
-        categoria_articulo = get_object_or_404(CategoriaArticulo, id=categoria_articulo_id)
-        csrf_token = get_token(request)
-        return JsonResponse({
-            'id': categoria_articulo.id,
-            'nombre': categoria_articulo.nombre,
-            'estado': categoria_articulo.estado,
-            'csrf_token': csrf_token
-        })
-
-    def put(self, request, categoria_articulo_id):
-        categoria_articulo = get_object_or_404(CategoriaArticulo, id=categoria_articulo_id)        
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        nombre = data.get('nombre')    
-        if nombre is None:
-            return JsonResponse({'error': 'El campo nombre no puede estar vacío.'}, status=400)
-        
-        categoria_articulo.nombre = nombre
-        
-        try:
-            categoria_articulo.save()
-            return JsonResponse({'success': True, 'message': f"Categoría Artículo {categoria_articulo.nombre} editado correctamente."}, status=200)
-        except IntegrityError as e:
-            return JsonResponse({'error': str(e)}, status=400)        
-
-    def post(self, request, categoria_articulo_id):
-        return JsonResponse({'error': 'Método no permitido.'}, status=405)
 
 # Validar contraseña según las reglas (≥8 caracteres, 1 mayúscula, 1 minúscula, 1 número)
 def validate_password_strength(password):
@@ -274,7 +188,6 @@ class ResetPasswordView(APIView):
         return Response({"message": "Contraseña actualizada correctamente."}, status=200)
 
 class ProfileView(APIView):
-    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         user = request.user
@@ -511,7 +424,7 @@ class CrearCategoriaArticulo(APIView):
             return JsonResponse({"error": f"Error al crear la categoría artículo: {str(e)}"}, status=500)
      
 #Listar categoria articulo
-class ListarCategoriaArticulo(APIView):
+class ListarCategoriaArticulo(APIView):     
     def get(self, request):
         try:
             categorias = CategoriaArticulo.objects.all()
