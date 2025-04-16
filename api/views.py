@@ -272,7 +272,7 @@ class ProfileView(APIView):
 
 
 
-""" 
+ 
 #CLIENTE
 # Vista personalizada para listar clientes
 class ListarClientes(APIView):
@@ -284,6 +284,7 @@ class ListarClientes(APIView):
         except Rol.DoesNotExist:
             return Response([], status=404)
         
+"""            
 #///////////////////////////////////////////////////////////////////////
 #VENDEDOR
 # VISTA LISTAR VENDEDORES
