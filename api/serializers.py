@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import (Rol, Persona, Usuario, CategoriaArticulo, CategoriaProductoBase, Articulo, Order, OrderItem)
+from .models import (Rol, Persona, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, ProductoBaseFoto, ArticulosProductoBase, Order, OrderItem)
 
 class RolSerializer(serializers.ModelSerializer):
     class Meta:
@@ -14,7 +14,7 @@ class PersonaSerializer(serializers.ModelSerializer):
 class CategoriaArticuloSerializer(serializers.ModelSerializer):
     class Meta:
         model = CategoriaArticulo
-        fields = '__all__'
+        fields = ['id', 'nombre', 'estado']
 
 class CategoriaProductoBaseSerializer(serializers.ModelSerializer):
     class Meta:
@@ -22,9 +22,10 @@ class CategoriaProductoBaseSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class ArticuloSerializer(serializers.ModelSerializer):
+    categoriaArticulo = CategoriaArticuloSerializer(read_only=True)
     class Meta:
         model = Articulo
-        fields = ['nombre', 'precio']
+        fields = '__all__'
 
 class OrderItemSerializer(serializers.ModelSerializer):
     articulo = ArticuloSerializer()
@@ -50,3 +51,33 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
 
 
+class ProductoBaseSerializer(serializers.ModelSerializer):
+    categoriaProductoBase = CategoriaProductoBaseSerializer()
+    articulos = ArticuloSerializer(many=True, read_only=True)
+    imagen_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductoBase
+        fields = '__all__'
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            return obj.imagen.url
+        return None
+
+    # Sobrescribimos el método create para permitir la creación de fotos junto con el producto base
+    def create(self, validated_data):
+        fotos_data = self.context['request'].FILES.getlist(
+            'fotos')  # Obtener las fotos desde los archivos
+        producto_base = ProductoBase.objects.create(**validated_data)
+
+        for foto in fotos_data:
+            ProductoBaseFoto.objects.create(
+                productoBase=producto_base, foto=foto)
+
+        return producto_base
+
+class ArticulosProductoBaseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ArticulosProductoBase
+        fields = '__all__'

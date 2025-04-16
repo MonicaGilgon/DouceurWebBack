@@ -1,11 +1,11 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, CategoriaProductoBaseSerializer)
-from .models import (Rol, Usuario, CategoriaArticulo, CategoriaProductoBase, Order)
+from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer)
+from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
 from django.contrib.auth.hashers import check_password
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import render, redirect, get_object_or_404
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
@@ -590,5 +590,104 @@ class ProductosPorCategoria(APIView):
 
 
 
+#/////////////////////////////////////////////////////////////////////////
+#ARTICULOS
+#Crear articulo
+class CrearArticulo(APIView):
+    def post(self, request): 
+        try: 
+            nombre = request.data.get('nombre')
+            categoriaArticulo = request.data.get('categoriaArticulo')
+            # Verificar si el nombre ya existe
+            if Articulo.objects.filter (nombre=nombre).exists():
+                return JsonResponse({"error": "Ya existe un artículo con este nombre."}, status=400)       
+            nuevo_articulo = Articulo(
+                nombre=nombre,              
+                categoriaArticulo_id=categoriaArticulo,                
+            )
+            nuevo_articulo.save()
+            return JsonResponse({"success": f"Artículo {nuevo_articulo.nombre} creado correctamente."}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": f"Error al crear el artículo: {str(e)}"}, status=500)
+
+#Listar articulo
+class ListarArticulos(APIView):
+    def get(self, request):
+        try:
+            articulos = Articulo.objects.all()
+            serializer = ArticuloSerializer(articulos, many=True)
+            return Response(serializer.data, status=200)
+        except Articulo.DoesNotExist:
+            return JsonResponse([], safe=False, status=404)
+
+
+#//////////////////////////////////////////////////////////
+#PRODUCTO BASE
+#Crear producto base
+class CrearProductoBase(APIView):
+    def post(self, request):
+        try:
+            nombre = request.data.get('nombre')
+            descripcion = request.data.get('descripcion')
+            precio = request.data.get('precio')
+            imagen = request.FILES.get('imagen')
+            categoriaProductoBase_id = request.data.get('categoriaProductoBase') 
+            articulos_ids = request.data.get('articulos', '[]')
+
+            # Validar y parsear IDs de artículos
+            articulos_ids = json.loads(articulos_ids) if isinstance(articulos_ids, str) else articulos_ids
+            articulos = Articulo.objects.filter(id__in=articulos_ids)
+            if len(articulos) != len(articulos_ids):
+                return JsonResponse({"error": "Uno o más artículos no existen."}, status=400)
+
+            # Verificar que las claves foráneas existen
+            try:
+                categoriaProductoBase = CategoriaProductoBase.objects.get(id=categoriaProductoBase_id)
+            except CategoriaProductoBase.DoesNotExist:
+                return JsonResponse({"error": "La categoría proporcionada no existe."}, status=400)
+            
+            # Crear el producto base
+            nuevo_producto_base = ProductoBase(
+                nombre=nombre,
+                descripcion=descripcion,
+                precio=float(precio),
+                imagen=imagen,
+                estado=True,
+                categoriaProductoBase=categoriaProductoBase,                
+            )
+            nuevo_producto_base.save()
+
+            # Asociar artículos
+            nuevo_producto_base.articulos.set(articulos)
+
+            return JsonResponse({"success": f"Producto '{nuevo_producto_base.nombre}' creado correctamente."}, status=201)
+        except Exception as e:
+            return JsonResponse({"error": f"Error al crear el producto base: {str(e)}"}, status=500)
+        
+
+def product_detail(request, id):
+    producto = get_object_or_404(ProductoBase, id=id)
+    return render(request, 'products/detalleProducto.html', {'producto': producto})
+
+
+
+#Listar producto base
+class ListarProductoBase(APIView):
+    def get(self, request):
+        try:
+            productoBase = ProductoBase.objects.all()
+            serializer = ProductoBaseSerializer(productoBase, many=True)
+            return Response(serializer.data, status=200)
+        except ProductoBase.DoesNotExist:
+            return JsonResponse([], status=404)
+
+def products_list_views(request):
+    # Filtrar productos con estado=True
+    products = ProductoBase.objects.filter(estado=True)
+
+    context = {
+        "products": products, 
+    }
+    #return render(request, '/index.html', context)
 
 

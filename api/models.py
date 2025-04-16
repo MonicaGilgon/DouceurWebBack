@@ -54,8 +54,7 @@ class CategoriaProductoBase(models.Model):
 
 class Articulo(models.Model):
     nombre = models.CharField(max_length=100)
-    precio = models.DecimalField(max_digits=10, decimal_places=2)
-    categoria = models.ForeignKey(CategoriaArticulo, on_delete=models.CASCADE)
+    categoriaArticulo = models.ForeignKey(CategoriaArticulo, on_delete=models.CASCADE)
     estado = models.BooleanField(default=True)
 
     def __str__(self):
@@ -85,4 +84,39 @@ class OrderItem(models.Model):
      articulo = models.ForeignKey(Articulo, on_delete=models.CASCADE)
 
 
+
+class ProductoBase(models.Model):
+    nombre = models.CharField(max_length=100)
+    descripcion = models.TextField()
+    precio = models.FloatField()
+    imagen = models.ImageField(upload_to='productos_fotos', null=True, blank=True)  
+    estado = models.BooleanField(default=True)
+    categoriaProductoBase = models.ForeignKey(CategoriaProductoBase, on_delete=models.CASCADE)
+    articulos = models.ManyToManyField('Articulo', blank=True)
+
+    def __str__(self):
+        return self.nombre
+    
+class ProductoBaseFoto(models.Model):
+    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE, related_name='fotos')
+    foto = models.ImageField(upload_to='productos_fotos')
+    
+    def __str__(self):
+        return f"Foto de {self.productoBase.nombre}"
+
+
+
+class ArticulosProductoBase(models.Model):
+    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
+    articulo = models.ManyToManyField(Articulo)
+
+
+class Personalizado(models.Model):
+    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
+    categoriaArticulo = models.ForeignKey(CategoriaArticulo, on_delete=models.CASCADE)
+    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
+    articuloSeleccionado = models.ForeignKey(ArticulosProductoBase, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.productoBase.nombre
 
