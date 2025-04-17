@@ -54,6 +54,7 @@ urlpatterns=[
 
     #URL clientes
     path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
+    path('editar-cliente/<int:cliente_id>/', views.EditarCliente.as_view(), name='editar-cliente'),
 
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

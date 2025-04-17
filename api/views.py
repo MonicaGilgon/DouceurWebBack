@@ -284,6 +284,35 @@ class ListarClientes(APIView):
         except Rol.DoesNotExist:
             return Response([], status=404)
         
+class EditarCliente(APIView):
+    def get(self, request, cliente_id):
+        cliente = get_object_or_404(Usuario, id=cliente_id, rol__nombre='cliente')
+        return JsonResponse({
+            'id': cliente.id,
+            'nombre': cliente.nombre_completo,
+            'correo': cliente.correo,
+            'telefono': cliente.telefono,
+            'direccion': cliente.direccion
+        })
+
+    def post(self, request, cliente_id):
+        cliente = get_object_or_404(Usuario, id=cliente_id, rol__nombre='cliente')        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON inválido'}, status=400)
+
+        cliente.nombre_completo = data.get('nombre', cliente.nombre_completo)
+        cliente.correo = data.get('correo', cliente.correo)
+        cliente.telefono = data.get('telefono', cliente.telefono)
+        cliente.direccion = data.get('direccion', cliente.direccion)
+        
+        try:
+            cliente.save()
+            return JsonResponse({'success': True, 'message': f"Cliente {cliente.nombre_completo} editado correctamente."}, status=200)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
 """            
 #///////////////////////////////////////////////////////////////////////
 #VENDEDOR
