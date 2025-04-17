@@ -52,6 +52,9 @@ urlpatterns=[
     #path('productos_por_categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos_por_categoria'),
 
 
+    #URL clientes
+    path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
+
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

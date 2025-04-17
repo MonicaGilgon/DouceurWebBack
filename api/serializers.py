@@ -32,7 +32,9 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['articulo', 'quantity', 'price']
+        fields = ['articulo', #'quantity',
+                   #'price'
+                   ]
 
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
@@ -47,7 +49,7 @@ class UsuarioSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Usuario
-        fields = ['nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders']
+        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders']
 
 
 
