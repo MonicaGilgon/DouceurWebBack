@@ -3,7 +3,7 @@ from rest_framework import routers
 from api import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import ProfileView
+from .views import ProfileView, CrearProductoBase, ListarProductoBase
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = "api"

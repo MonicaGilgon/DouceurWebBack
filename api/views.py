@@ -23,6 +23,8 @@ from django.contrib.auth import authenticate
 from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
+from rest_framework import generics, permissions
+
 
 # INDEX
 def index(request):
@@ -664,6 +666,22 @@ class CrearProductoBase(APIView):
             categoriaProductoBase_id = request.data.get('categoriaProductoBase') 
             articulos_ids = request.data.get('articulos', '[]')
 
+             # Validaciones nombre
+            if not nombre:
+                return JsonResponse({"error": "El nombre no puede estar vacío."}, status=400)
+            if ProductoBase.objects.filter(nombre=nombre).exists():
+                return JsonResponse({"error": "Ya existe un producto con ese nombre."}, status=400)
+
+            # Validaciones descripción y precio
+            if not descripcion:
+                return JsonResponse({"error": "La descripción es obligatoria."}, status=400)
+            try:
+                precio = float(precio)
+                if precio <= 0:
+                    return JsonResponse({"error": "El precio debe ser mayor que 0."}, status=400)
+            except:
+                return JsonResponse({"error": "Precio inválido."}, status=400)
+
             # Validar y parsear IDs de artículos
             articulos_ids = json.loads(articulos_ids) if isinstance(articulos_ids, str) else articulos_ids
             articulos = Articulo.objects.filter(id__in=articulos_ids)
@@ -676,12 +694,17 @@ class CrearProductoBase(APIView):
             except CategoriaProductoBase.DoesNotExist:
                 return JsonResponse({"error": "La categoría proporcionada no existe."}, status=400)
             
+            for img in imagenes:
+                if not img.name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                    return JsonResponse({"error": f"La imagen '{img.name}' no es JPG o PNG."}, status=400)
+                if img.size > 5 * 1024 * 1024:
+                    return JsonResponse({"error": f"La imagen '{img.name}' supera los 5MB."}, status=400)
+            
             # Crear el producto base
             nuevo_producto_base = ProductoBase(
                 nombre=nombre,
                 descripcion=descripcion,
-                precio=float(precio),
-                imagen=imagen,
+                precio=precio,
                 estado=True,
                 categoriaProductoBase=categoriaProductoBase,                
             )
@@ -689,6 +712,10 @@ class CrearProductoBase(APIView):
 
             # Asociar artículos
             nuevo_producto_base.articulos.set(articulos)
+            
+            # Guardar imágenes
+            for img in imagenes:
+                ProductoBaseFoto.objects.create(productoBase=nuevo_producto_base, foto=img)
 
             return JsonResponse({"success": f"Producto '{nuevo_producto_base.nombre}' creado correctamente."}, status=201)
         except Exception as e:
@@ -705,11 +732,11 @@ def product_detail(request, id):
 class ListarProductoBase(APIView):
     def get(self, request):
         try:
-            productoBase = ProductoBase.objects.all()
+            productoBase = ProductoBase.objects.filter(estado=True)
             serializer = ProductoBaseSerializer(productoBase, many=True)
             return Response(serializer.data, status=200)
         except ProductoBase.DoesNotExist:
-            return JsonResponse([], status=404)
+            return JsonResponse({"error": f"Error al obtener productos: {str(e)}"}, status=500)
 
 def products_list_views(request):
     # Filtrar productos con estado=True
@@ -719,5 +746,4 @@ def products_list_views(request):
         "products": products, 
     }
     #return render(request, '/index.html', context)
-
 
