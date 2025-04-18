@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer)
-from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order)
+from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
 from django.contrib.auth.hashers import check_password
@@ -665,6 +665,7 @@ class CrearProductoBase(APIView):
             imagen = request.FILES.get('imagen')
             categoriaProductoBase_id = request.data.get('categoriaProductoBase') 
             articulos_ids = request.data.get('articulos', '[]')
+            imagenes = request.FILES.getlist('fotos') 
 
              # Validaciones nombre
             if not nombre:
@@ -735,7 +736,7 @@ class ListarProductoBase(APIView):
             productoBase = ProductoBase.objects.filter(estado=True)
             serializer = ProductoBaseSerializer(productoBase, many=True)
             return Response(serializer.data, status=200)
-        except ProductoBase.DoesNotExist:
+        except Exception as e:
             return JsonResponse({"error": f"Error al obtener productos: {str(e)}"}, status=500)
 
 def products_list_views(request):
