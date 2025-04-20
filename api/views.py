@@ -328,7 +328,65 @@ class ListarVendedores(APIView):
         except Rol.DoesNotExist:
             return Response([], status=404)
 
+"""
 
+#VENDEDORES
+# VISTA LISTAR VENDEDORES
+class ListarVendedores(APIView):
+    def get(self, request):
+        try:
+            vendedores = Usuario.obtener_vendedores()
+            serializer = VendedorSerializer(vendedores, many=True)
+            return Response(serializer.data, status=200)
+        except Rol.DoesNotExist:
+            return Response([], status=404)
+
+class CambiarEstadoVendedor(APIView):
+    def patch(self, request, vendedor_id):
+        vendedor = get_object_or_404(Usuario, id=vendedor_id, rol__nombre='vendedor')
+        estado = request.data.get('estado')
+        if estado is not None:
+            vendedor.estado = bool(estado)
+            vendedor.save()
+            return Response({'status': 'ok', 'activo': vendedor.estado}, status=status.HTTP_200_OK)
+        return Response(
+            {'status': 'error', 'message': 'El campo estado es requerido.'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+class EditarVendedor(APIView):
+    def get(self, request, vendedor_id):
+        vendedor = get_object_or_404(Usuario, id=vendedor_id, rol__nombre='vendedor')
+        return JsonResponse({
+            'id': vendedor.id,
+            'document_number': vendedor.document_number,
+            'nombre': vendedor.nombre_completo,
+            'correo': vendedor.correo,
+            'telefono': vendedor.telefono,
+            'direccion': vendedor.direccion,
+            'estado': vendedor.estado
+        })
+
+    def post(self, request, vendedor_id):
+        vendedor = get_object_or_404(Usuario, id=vendedor_id, rol__nombre='vendedor')        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'JSON inválido'}, status=400)
+        
+        vendedor.document_number = data.get('document_number', vendedor.document_number)
+        vendedor.nombre_completo = data.get('nombre_completo', vendedor.nombre_completo)
+        vendedor.correo = data.get('correo', vendedor.correo)
+        vendedor.telefono = data.get('telefono', vendedor.telefono)
+        vendedor.direccion = data.get('direccion', vendedor.direccion)
+        vendedor.estado = bool(data.get('estado', vendedor.estado))
+        
+        try:
+            vendedor.save()
+            return JsonResponse({'success': True, 'message': f"Vendedor {vendedor.nombre_completo} editado correctamente."}, status=200)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+"""
 # VISTA PERSONALIZADA PARA CREAR VENDEDOR
 class CrearVendedor(APIView):
     def post(self, request): 

@@ -51,7 +51,10 @@ class UsuarioSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders']
 
-
+class VendedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
 
 class ProductoBaseSerializer(serializers.ModelSerializer):
     categoriaProductoBase = CategoriaProductoBaseSerializer()
