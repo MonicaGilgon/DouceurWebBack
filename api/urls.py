@@ -6,6 +6,7 @@ from .models import Usuario
 from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib.auth import views as auth_views
+from .views import CustomRegisterView
 
 
 app_name = "api"
@@ -15,9 +16,9 @@ router.register(r'usuario',views.UsuarioViewSet)
 urlpatterns=[
     path('', views.index, name=""),
 
-    #URLS LOGIN
-    path("sign-up/", views.CrearCliente.as_view(), name="sign-up"),
-    path("sign-in/", views.LoginView.as_view(), name="sign-in"),
+    #URL REGISTRO
+    path('auth/registro/', CustomRegisterView.as_view(), name='custom_register'),
+
    
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

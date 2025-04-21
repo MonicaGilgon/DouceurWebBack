@@ -3,6 +3,15 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Rol(models.Model):
+    ADMINISTRADOR = 'administrador'
+    VENDEDOR = 'vendedor'
+    CLIENTE = 'cliente'
+
+    ROLES = [
+        (ADMINISTRADOR, 'Administrador'),
+        (VENDEDOR, 'Vendedor'),
+        (CLIENTE, 'Cliente'),
+    ]
     nombre = models.CharField(max_length=100)
 
     def __str__(self):

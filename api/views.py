@@ -1,4 +1,5 @@
-from rest_framework import viewsets
+from django.shortcuts import redirect
+from rest_framework import viewsets, status
 from rest_framework.views import APIView
 from .serializers import (RolSerializer, UsuarioSerializer)
 from .models import (Rol, Usuario)
@@ -8,11 +9,18 @@ from rest_framework.response import Response
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.hashers import check_password
+from dj_rest_auth.registration.views import RegisterView
+from .serializers import CustomRegisterSerializer
 
 
  #INDEX
 def index(request):
     return HttpResponse("Bienvenido a la API de Douceur")
+
+
+class CustomRegisterView(RegisterView):
+    serializer_class = CustomRegisterSerializer
+
 
 
 #////////////////////////////////////////////////////////
@@ -52,6 +60,9 @@ class CrearCliente(APIView):
             return JsonResponse({"error": "Rol de cliente no encontrado."}, status=400)
         except Exception as e:
             return JsonResponse({"error": f"Error al crear el cliente: {str(e)}"}, status=500)
+        
+class CustomRegisterView(RegisterView):
+    serializer_class = CustomRegisterSerializer
 
 #LOGIN CLIENTE
 class LoginView(APIView):
