@@ -57,9 +57,11 @@ urlpatterns=[
     path('editar-cliente/<int:cliente_id>/', views.EditarCliente.as_view(), name='editar-cliente'),
 
     #URL Vendedores
+    path('crear-vendedor/', views.CrearVendedor.as_view(), name='crear-vendedor'),
     path('listar-vendedores/', views.ListarVendedores.as_view(), name='listar-vendedores'),
-    path('editar-vendedor/<int:vendedor_id>/', views.EditarVendedor.as_view(), name='editar-vendedor'),
     path('cambiar-estado-vendedor/<int:vendedor_id>/', views.CambiarEstadoVendedor.as_view(), name='cambiar-estado-vendedor'),
+    path('editar-vendedor/<int:vendedor_id>/', views.EditarVendedor.as_view(), name='editar-vendedor'),
+    
 
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),

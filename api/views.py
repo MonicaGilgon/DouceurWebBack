@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer)
+from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -9,6 +9,7 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.middleware.csrf import get_token
 from rest_framework.permissions import AllowAny
 from rest_framework.permissions import IsAuthenticated
+from django.contrib.auth.hashers import make_password
 import json
 from django.db import IntegrityError
 from django.core.mail import send_mail
@@ -331,6 +332,43 @@ class ListarVendedores(APIView):
 """
 
 #VENDEDORES
+#Crear vendedor
+class CrearVendedor(APIView):
+    def post(self, request): 
+        try:
+            vendedor_rol = Rol.objects.get(nombre="vendedor")
+            cedula = request.data.get('cedula')  
+            nombre = request.data.get('nombre')
+            correo = request.data.get('correo')
+            contrasenia = request.data.get('contrasenia')
+            telefono = request.data.get('telefono')
+            direccion = request.data.get('direccion')            
+            # Verificar si la cédula o el correo ya existen
+            if Usuario.objects.filter(Q(document_number=cedula) | Q(correo=correo)).exists():
+                return JsonResponse({"error": "Ya existe un usuario con esta cédula o correo."}, status=400)       
+            contrasenia_encriptada = make_password(contrasenia)
+            nuevo_vendedor = Usuario(
+                document_number=cedula,
+                nombre_completo=nombre,
+                correo=correo,
+                password=contrasenia_encriptada,
+                telefono=telefono,
+                direccion=direccion,
+                rol=vendedor_rol,
+                estado=True,
+                username=correo
+            )
+            nuevo_vendedor.save()
+            return JsonResponse({"success": f"Vendedor {nuevo_vendedor.nombre_completo} creado correctamente."}, status=201)
+        except Rol.DoesNotExist:
+            print("Error al crear el vendedor:", str(e))
+            return JsonResponse({"error": "Rol de vendedor no encontrado."}, status=400)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({"error": f"Error al crear el vendedor: {str(e)}"}, status=500)
+
+
 # VISTA LISTAR VENDEDORES
 class ListarVendedores(APIView):
     def get(self, request):
@@ -386,101 +424,7 @@ class EditarVendedor(APIView):
             return JsonResponse({'success': True, 'message': f"Vendedor {vendedor.nombre_completo} editado correctamente."}, status=200)
         except IntegrityError as e:
             return JsonResponse({'error': str(e)}, status=400)
-"""
-# VISTA PERSONALIZADA PARA CREAR VENDEDOR
-class CrearVendedor(APIView):
-    def post(self, request): 
-        try:
-            vendedor_rol = Rol.objects.get(nombre="vendedor")
 
-            nombre = request.data.get('nombre')
-            correo = request.data.get('correo')
-            contrasenia = request.data.get('contrasenia')
-            telefono = request.data.get('telefono')
-            direccion = request.data.get('direccion')            
-
-            # Validar datos obligatorios
-            if not all([nombre, correo, contrasenia, telefono, direccion]):
-                return JsonResponse({"error": "Todos los campos son obligatorios."}, status=400)
-
-            # Verificar si el correo ya existe
-            if Usuario.objects.filter(correo=correo).exists():
-                return JsonResponse({"error": "Ya existe un usuario con este correo."}, status=400)
-
-            contrasenia_encriptada = make_password(contrasenia)
-            nuevo_vendedor = Usuario(
-                nombre_completo=nombre,
-                correo=correo,
-                password=contrasenia_encriptada,
-                telefono=telefono,
-                direccion=direccion,
-                rol=vendedor_rol,
-                estado=True
-            )
-            nuevo_vendedor.save()
-            return JsonResponse({"success": f"Vendedor {nuevo_vendedor.nombre_completo} creado correctamente."}, status=201)
-
-        except Rol.DoesNotExist:
-            return JsonResponse({"error": "Rol de vendedor no encontrado."}, status=400)
-        except Exception as e:
-            return JsonResponse({"error": f"Error al crear el vendedor: {str(e)}"}, status=500)
-
-
-#LOGIN VENDEDOR
-class VendedorViewSet(viewsets.ModelViewSet):
-    queryset = Vendedor.objects.all()
-    serializer_class = VendedorSerializer
-
-
-#CAMBIAR ESTADO VENDEDOR
-class CambiarEstadoVendedor(APIView):
-    def patch(self, request, vendedor_id):
-        vendedor = get_object_or_404(Persona, id=vendedor_id)
-        activo = request.data.get('activo')
-        if activo is not None:
-            vendedor.activo = bool(activo)
-            vendedor.save()
-            return Response({'status': 'ok', 'activo': vendedor.activo}, status=status.HTTP_200_OK)
-        return Response(
-            {'status': 'error', 'message': 'El campo activo es requerido.'},
-            status=status.HTTP_400_BAD_REQUEST
-        )
-    
-#EDITAR VENDEDOR
-from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
-
-@method_decorator(csrf_exempt, name='dispatch')
-class EditarVendedor(APIView):
-    def get(self, request, vendedor_id):
-        vendedor = get_object_or_404(Usuario, id=vendedor_id, rol__nombre='vendedor')
-        return JsonResponse({
-            'id': vendedor.id,
-            'nombre': vendedor.nombre_completo,
-            'correo': vendedor.correo,
-            'telefono': vendedor.telefono,
-            'direccion': vendedor.direccion
-        })
-
-    def post(self, request, vendedor_id):
-        vendedor = get_object_or_404(Usuario, id=vendedor_id, rol__nombre='vendedor')        
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'JSON inválido'}, status=400)
-
-        vendedor.nombre_completo = data.get('nombre', vendedor.nombre_completo)
-        vendedor.correo = data.get('correo', vendedor.correo)
-        vendedor.telefono = data.get('telefono', vendedor.telefono)
-        vendedor.direccion = data.get('direccion', vendedor.direccion)
-        
-        try:
-            vendedor.save()
-            return JsonResponse({'success': True, 'message': f"Vendedor {vendedor.nombre_completo} editado correctamente."}, status=200)
-        except IntegrityError as e:
-            return JsonResponse({'error': str(e)}, status=400)
-
- """
 #////////////////////////////////////////////////////////// 
 
 class RolViewSet(viewsets.ModelViewSet):
