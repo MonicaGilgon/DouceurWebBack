@@ -116,6 +116,15 @@ def validate_password_strength(password):
         return False, "La contraseña debe contener al menos un número."
     return True, ""
 
+from django.core.mail import send_mail
+from django.conf import settings
+from django.utils.http import urlsafe_base64_encode
+from django.utils.encoding import force_bytes
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .models import Usuario  # Asegúrate de que este modelo exista
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+
 class RecoverPasswordView(APIView):
     def post(self, request):
         correo = request.data.get('correo')
@@ -135,19 +144,170 @@ class RecoverPasswordView(APIView):
         # Crear el enlace de restablecimiento
         reset_link = f"http://localhost:3000/reset-password?token={token}&uid={uid}"
 
-        # Enviar el correo
+        # Asunto del correo
         subject = "Restablecer contraseña - Douceur"
+
+        # Mensaje en texto plano (como respaldo)
         message = f"Hola {user.nombre_completo},\n\n" \
                   f"Hemos recibido una solicitud para restablecer tu contraseña. " \
                   f"Haz clic en el siguiente enlace para crear una nueva contraseña:\n\n" \
                   f"{reset_link}\n\n" \
                   f"Este enlace expirará en 15 minutos. Si no solicitaste este cambio, ignora este correo.\n\n" \
                   f"Saludos,\nEl equipo de Douceur"
+
+        # Plantilla HTML para el correo
+        html_message = f"""
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Restablecer Contraseña</title>
+            <style>
+                body {{
+                    font-family: 'Helvetica Neue', Arial, sans-serif;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f4;
+                    line-height: 1.6;
+                }}
+                .container {{
+                    width: 100%;
+                    max-width: 600px;
+                    margin: 20px auto;
+                    background-color: #ffffff;
+                    border-radius: 10px;
+                    overflow: hidden;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                }}
+                .header {{
+                    background-color: #FDC7E7;
+                    color: #333333;
+                    text-align: center;
+                    padding: 20px;
+                }}
+                .header img {{
+                    width: 120px;
+                    height: auto;
+                    display: block;
+                    margin: 0 auto;
+                }}
+                .content {{
+                    padding: 40px 30px;
+                    text-align: center;
+                }}
+                .content img.lock-icon {{
+                    width: 80px;
+                    height: auto;
+                    margin-bottom: 20px;
+                }}
+                .content h1 {{
+                    font-size: 26px;
+                    color: #333333;
+                    margin-bottom: 15px;
+                    font-weight: 600;
+                }}
+                .content p {{
+                    font-size: 16px;
+                    color: #555555;
+                    margin-bottom: 25px;
+                }}
+                .button {{
+                    display: inline-block;
+                    padding: 12px 30px;
+                    background-color: #FDC7E7;
+                    color: #333333;
+                    text-decoration: none;
+                    border-radius: 5px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    transition: background-color 0.3s ease;
+                }}
+                .button:hover {{
+                    background-color: #f9b3db;
+                }}
+                .social {{
+                    text-align: center;
+                    padding: 20px;
+                    border-top: 1px solid #eeeeee;
+                }}
+                .social p {{
+                    font-size: 14px;
+                    color: #555555;
+                    margin-bottom: 15px;
+                }}
+                .social a {{
+                    margin: 0 10px;
+                    text-decoration: none;
+                    display: inline-block;
+                }}
+                .social img {{
+                    width: 28px;
+                    height: 28px;
+                    border-radius: 50%;
+                }}
+                .footer {{
+                    background-color: #FDC7E7;
+                    color: #333333;
+                    text-align: center;
+                    padding: 20px;
+                    font-size: 14px;
+                }}
+                .footer a {{
+                    color: #333333;
+                    text-decoration: none;
+                    margin: 0 10px;
+                    font-weight: 500;
+                }}
+                .footer a:hover {{
+                    text-decoration: underline;
+                }}
+                .footer-links {{
+                    margin-top: 10px;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <img src="https://res.cloudinary.com/yasstore23/image/upload/v1745567054/nlfc1k22byubnhhfm3ix.png" alt="Douceur Logo">
+                </div>
+                <div class="content">
+                    <img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/ejjihbr1fmlbuailcwrr.png" alt="Lock Icon" class="lock-icon">
+                    <h1>¿OLVIDASTE TU CONTRASEÑA?</h1>
+                    <p>Hola {user.nombre_completo},</p>
+                    <p>Hemos recibido una solicitud para cambiar tu contraseña. Si no realizaste esta solicitud, ignora este correo. De lo contrario, haz clic en el botón de abajo para cambiar tu contraseña:</p>
+                    <a href="{reset_link}" class="button">RESTABLECER CONTRASEÑA</a>
+                </div>
+                <div class="social">
+                    <p>SÍGUENOS:</p>
+                    <a href="https://wa.me/573124132200"><img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/vgfmppajatgnqklsdbhk.png" alt="Whatsapp"></a>
+                    <a href="https://www.instagram.com/douceur.nl/"><img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/fyktowrszcjzeuogelsp.png" alt="Instagram"></a>
+                </div>
+                <div class="footer">
+                    <p>¿TIENES PREGUNTAS? <a href="mailto:info@douceur.com">CONTÁCTANOS</a></p>
+                    <div class="footer-links">
+                        <a href="#">REGÍSTRATE</a> | <a href="#">BLOG</a> | <a href="#">SOBRE NOSOTROS</a>
+                    </div>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
+
+        # Enviar el correo
         from_email = settings.DEFAULT_FROM_EMAIL
         recipient_list = [user.correo]
 
         try:
-            send_mail(subject, message, from_email, recipient_list, fail_silently=False)
+            send_mail(
+                subject=subject,
+                message=message,  # Versión en texto plano
+                from_email=from_email,
+                recipient_list=recipient_list,
+                html_message=html_message,  # Versión HTML
+                fail_silently=False,
+            )
         except Exception as e:
             return Response({"error": f"Error al enviar el correo: {str(e)}"}, status=500)
 
@@ -203,6 +363,7 @@ class ProfileView(APIView):
         data = request.data
 
         # Campos permitidos para actualizar
+        document_number = data.get('document_number', user.document_number)
         nombre_completo = data.get('nombre_completo', user.nombre_completo)
         direccion = data.get('direccion', user.direccion)
         telefono = data.get('telefono', user.telefono)
@@ -216,6 +377,8 @@ class ProfileView(APIView):
             return Response({"error": "El teléfono no puede estar vacío."}, status=400)
         if not correo:
             return Response({"error": "El correo no puede estar vacío."}, status=400)
+        if not document_number:
+            return Response({"error": "El número de documento no puede estar vacío."}, status=400)
 
         # Validar formato de correo
         email_validator = EmailValidator()
@@ -229,13 +392,15 @@ class ProfileView(APIView):
             return Response({"error": "Ya existe un usuario con este correo."}, status=400)
         if telefono != user.telefono and Usuario.objects.filter(telefono=telefono).exists():
             return Response({"error": "Ya existe un usuario con este teléfono."}, status=400)
+        
 
         # Actualizar campos
+        user.document_number = document_number
         user.nombre_completo = nombre_completo
         user.direccion = direccion
         user.telefono = telefono
         user.correo = correo
-        user.username = correo  # Actualizar username ya que es el mismo que correo
+        user.username = correo  
 
         try:
             user.save()
