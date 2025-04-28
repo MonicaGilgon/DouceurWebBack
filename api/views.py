@@ -36,6 +36,7 @@ def index(request):
 class CrearCliente(APIView):    
     def post(self, request): 
         try:
+            
             rol_cliente = Rol.objects.get(nombre="cliente")
             nombre = request.data.get('nombre')
             correo = request.data.get('correo')
@@ -45,6 +46,11 @@ class CrearCliente(APIView):
             # Validar que las contraseñas coincidan
             if password1 != password2:
                 return JsonResponse({"error": "Las contraseñas no coinciden."}, status=400)
+            
+            # Validar la fortaleza de la contraseña
+            is_valid, error_message = validate_password_strength(password1)
+            if not is_valid:
+                return JsonResponse({"error": error_message}, status=400)
 
             # Verificar si el correo ya existe
             if Usuario.objects.filter(correo=correo).exists():
@@ -114,6 +120,8 @@ def validate_password_strength(password):
         return False, "La contraseña debe contener al menos una letra minúscula."
     if not re.search(r'\d', password):
         return False, "La contraseña debe contener al menos un número."
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>_-]', password):
+        return False, "La contraseña debe contener al menos un carácter especial."
     return True, ""
 
 class RecoverPasswordView(APIView):
