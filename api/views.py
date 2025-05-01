@@ -282,16 +282,19 @@ class RecoverPasswordView(APIView):
                 </div>
                 <div class="content">
                     <img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/ejjihbr1fmlbuailcwrr.png" alt="Lock Icon" class="lock-icon">
-                    <h1>¿OLVIDASTE TU CONTRASEÑA?</h1>
-                    <p>Hola {user.nombre_completo},</p>
+                   <h1>¿OLVIDASTE TU CONTRASEÑA?</h1>
+                   <p>Hola {user.nombre_completo},</p>
                     <p>Hemos recibido una solicitud para cambiar tu contraseña. Si no realizaste esta solicitud, ignora este correo. De lo contrario, haz clic en el botón de abajo para cambiar tu contraseña:</p>
-                    <a href="{reset_link}" class="button">RESTABLECER CONTRASEÑA</a>
-                    <p style="font-size: 0.9em; color: #555; margin-top: 20px;">Este enlace es válido por 15 minutos. Después de ese tiempo, tendrás que solicitar uno nuevo si necesitas restablecer tu contraseña.</p>
+                   <a href="{reset_link}" class="button">RESTABLECER CONTRASEÑA</a>
+                   <p style="font-size: 0.9em; color: #555; margin-top: 20px;">Este enlace es válido por 15 minutos. Después de ese tiempo, tendrás que solicitar uno nuevo si necesitas restablecer tu contraseña.</p>
+
+
                 </div>
                 <div class="social">
                     <p>SÍGUENOS:</p>
                     <a href="https://wa.me/573124132200"><img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/vgfmppajatgnqklsdbhk.png" alt="Whatsapp"></a>
                     <a href="https://www.instagram.com/douceur.nl/"><img src="https://res.cloudinary.com/yasstore23/image/upload/v1745566822/fyktowrszcjzeuogelsp.png" alt="Instagram"></a>
+                     
                   
                 </div>
                 <div class="footer">
