@@ -121,8 +121,6 @@ def validate_password_strength(password):
         return False, "La contraseña debe contener al menos una letra minúscula."
     if not re.search(r'\d', password):
         return False, "La contraseña debe contener al menos un número."
-    if not re.search(r'[!@#$%^&*(),.?":{}|<>_-]', password):
-        return False, "La contraseña debe contener al menos un carácter especial."
     return True, ""
 
 from django.core.mail import send_mail
