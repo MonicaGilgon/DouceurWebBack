@@ -97,7 +97,8 @@ class LoginView(APIView):
                     "id": user.id,
                     "nombre": user.nombre_completo,
                     "correo": user.correo,
-                    "rol": user.rol.nombre
+                    "rol": user.rol.nombre,
+                    "estado": user.estado
                 }
             }, status=200)
         return Response({"error": "Credenciales inválidas"}, status=401)
