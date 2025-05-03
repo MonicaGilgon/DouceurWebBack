@@ -759,6 +759,13 @@ class CambiarEstadoCategoriaProductoBase(APIView):
 
 
 
+class ProductosPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        productosBase = ProductoBase.objects.filter(categoriaProductoBase=categoria_id)
+        serializer = ProductoBaseSerializer(productosBase, many=True)
+        return Response(serializer.data)
+
+
 #Editar categoria producto base
 class EditarCategoriaProductoBase(APIView):
     def get(self, request, categoria_PB_id):
@@ -830,6 +837,15 @@ class ListarArticulos(APIView):
             return Response(serializer.data, status=200)
         except Articulo.DoesNotExist:
             return JsonResponse([], safe=False, status=404)
+
+
+
+class ArticulosPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        articulos = Articulo.objects.filter(categoriaArticulo=categoria_id)
+        serializer = ArticuloSerializer(articulos, many=True)
+        return Response(serializer.data)
+
 
 
 #//////////////////////////////////////////////////////////
