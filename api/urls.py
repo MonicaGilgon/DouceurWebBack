@@ -49,8 +49,9 @@ urlpatterns=[
     path('listar-producto-base/', views.ListarProductoBase.as_view(), name='listar-producto-base'),
     #path('cambiar_estado_producto/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar_estado_producto'),    
     #path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase2.as_view(), name='editar_producto_base'),
-    #path('productos_por_categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos_por_categoria'),
-
+    path('productos_por_categoria/<int:categoria_id>/', views.ListarCategoriaProductoBase.as_view(), name='productos_por_categoria'),
+    path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
+    path('cambiar-estado-producto-base/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar-estado-producto-base'),
 
     #URL clientes
     path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
