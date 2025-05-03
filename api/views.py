@@ -927,3 +927,58 @@ def products_list_views(request):
     }
     #return render(request, '/index.html', context)
 
+
+
+class EditarProductoBase(APIView):
+    def get(self, request, producto_id):
+        producto_base = get_object_or_404(ProductoBase, id=producto_id)
+        csrf_token = get_token(request)
+        return JsonResponse({
+            'nombre': producto_base.nombre,
+            'descripcion': producto_base.descripcion,
+            'precio': producto_base.precio,
+            'estado': producto_base.estado,
+            'categoriaProductoBase': producto_base.categoriaProductoBase.id,
+            'articulos': list(producto_base.articulos.values('id', 'nombre')),
+            'imagen': producto_base.imagen.url if producto_base.imagen else None,
+            'csrf_token': csrf_token
+        })
+
+    def post(self, request, producto_id):
+        producto_base = get_object_or_404(ProductoBase, id=producto_id)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        # Asignar datos recibidos
+        nombre = data.get('nombre')
+        descripcion = data.get('descripcion')
+        precio = data.get('precio')
+        categoriaProductoBase_id = data.get('categoriaProductoBase')  # ID recibido
+        articulos = data.get('articulos')
+        imagen = data.get('imagen')
+
+        try:
+            # Convertir IDs en instancias
+            categoriaProductoBase = get_object_or_404(CategoriaProductoBase, id=categoriaProductoBase_id)
+            
+            # Actualizar campos del producto
+            producto_base.nombre = nombre
+            producto_base.descripcion = descripcion
+            producto_base.precio = precio
+            producto_base.categoriaProductoBase = categoriaProductoBase
+            producto_base.articulos = articulos
+
+            if imagen:  # Si la imagen fue actualizada
+                producto_base.imagen = imagen
+            
+            producto_base.save()
+
+            return JsonResponse({'success': True, 'message': f"Producto Base {producto_base.nombre} editado correctamente."}, status=200)
+        except CategoriaProductoBase.DoesNotExist:
+            return JsonResponse({'error': 'La categoría especificada no existe.'}, status=400)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+

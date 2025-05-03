@@ -48,7 +48,7 @@ urlpatterns=[
     path('crear-producto-base/', views.CrearProductoBase.as_view(), name='crear-producto-base'),
     path('listar-producto-base/', views.ListarProductoBase.as_view(), name='listar-producto-base'),
     #path('cambiar_estado_producto/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar_estado_producto'),    
-    #path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase2.as_view(), name='editar_producto_base'),
+    path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
     #path('productos_por_categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos_por_categoria'),
 
 
