@@ -722,7 +722,6 @@ class CrearCategoriaProductoBase(APIView):
             return JsonResponse({"success": f"Categoría producto base {nueva_categoria_producto_base.nombre} creada correctamente."}, status=201)
         except Exception as e:
             return JsonResponse({"error": f"Error al crear la categoría producto base: {str(e)}"}, status=500)
-     
 
 #Listar categoria producto base
 class ListarCategoriaProductoBase(APIView):
