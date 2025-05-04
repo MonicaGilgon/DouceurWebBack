@@ -757,6 +757,13 @@ class CambiarEstadoCategoriaProductoBase(APIView):
 
 
 
+class ProductosPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        productosBase = ProductoBase.objects.filter(categoriaProductoBase=categoria_id)
+        serializer = ProductoBaseSerializer(productosBase, many=True)
+        return Response(serializer.data)
+
+
 #Editar categoria producto base
 class EditarCategoriaProductoBase(APIView):
     def get(self, request, categoria_PB_id):
@@ -828,6 +835,15 @@ class ListarArticulos(APIView):
             return Response(serializer.data, status=200)
         except Articulo.DoesNotExist:
             return JsonResponse([], safe=False, status=404)
+
+
+
+class ArticulosPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        articulos = Articulo.objects.filter(categoriaArticulo=categoria_id)
+        serializer = ArticuloSerializer(articulos, many=True)
+        return Response(serializer.data)
+
 
 
 #//////////////////////////////////////////////////////////
@@ -997,5 +1013,60 @@ class CambiarEstadoProductoBase(APIView):
             producto.save()
             return Response({'status': 'ok', 'activo': producto.estado}, status=status.HTTP_200_OK)
         return Response({'status': 'error', 'message': 'El campo estado es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+
+
+class EditarProductoBase(APIView):
+    def get(self, request, producto_id):
+        producto_base = get_object_or_404(ProductoBase, id=producto_id)
+        csrf_token = get_token(request)
+        return JsonResponse({
+            'nombre': producto_base.nombre,
+            'descripcion': producto_base.descripcion,
+            'precio': producto_base.precio,
+            'estado': producto_base.estado,
+            'categoriaProductoBase': producto_base.categoriaProductoBase.id,
+            'articulos': list(producto_base.articulos.values('id', 'nombre')),
+            'imagen': producto_base.imagen.url if producto_base.imagen else None,
+            'csrf_token': csrf_token
+        })
+
+    def post(self, request, producto_id):
+        producto_base = get_object_or_404(ProductoBase, id=producto_id)
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        
+        # Asignar datos recibidos
+        nombre = data.get('nombre')
+        descripcion = data.get('descripcion')
+        precio = data.get('precio')
+        categoriaProductoBase_id = data.get('categoriaProductoBase')  # ID recibido
+        articulos = data.get('articulos')
+        imagen = data.get('imagen')
+
+        try:
+            # Convertir IDs en instancias
+            categoriaProductoBase = get_object_or_404(CategoriaProductoBase, id=categoriaProductoBase_id)
+            
+            # Actualizar campos del producto
+            producto_base.nombre = nombre
+            producto_base.descripcion = descripcion
+            producto_base.precio = precio
+            producto_base.categoriaProductoBase = categoriaProductoBase
+            producto_base.articulos = articulos
+
+            if imagen:  # Si la imagen fue actualizada
+                producto_base.imagen = imagen
+            
+            producto_base.save()
+
+            return JsonResponse({'success': True, 'message': f"Producto Base {producto_base.nombre} editado correctamente."}, status=200)
+        except CategoriaProductoBase.DoesNotExist:
+            return JsonResponse({'error': 'La categoría especificada no existe.'}, status=400)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)
 
 

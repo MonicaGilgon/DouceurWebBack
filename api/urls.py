@@ -32,16 +32,17 @@ urlpatterns=[
     # Ruta artículo
     path('crear-articulo/', views.CrearArticulo.as_view(), name='crear-articulo'),
     path('listar-articulos/', views.ListarArticulos.as_view(), name='listar-articulos'),
+    path('articulos-por-categoria/<int:categoria_id>/', views.ArticulosPorCategoria.as_view(), name='articulos-por-categoria'),
     #falta cambiar estado articulo
     #path('editar_articulo/<int:articulo_id>/', views.EditarArticulo.as_view(), name='editar_articulo'),
     #path('articulo/<int:id>/', views.ArticuloDetailView.as_view(), name='articulo-detail'),
-    #path('articulos_por_categoria/<int:categoria_id>/', views.ArticuloPorCategoria.as_view(), name='articulos_por_categoria'),
+    
 
 
     #URL categorias producto base
     path('crear-categoria-producto-base/', views.CrearCategoriaProductoBase.as_view(), name='crear-categoria-producto-base'),
     path('listar-categoria-producto-base/', views.ListarCategoriaProductoBase.as_view(), name='listar-categoria-producto-base'),
-    path('cambiar-estado-categoria-producto-base/<int:categoria_articulo_id>/', views.CambiarEstadoCategoriaProductoBase.as_view(), name='cambiar-estado-categoria-producto-base'),
+    path('cambiar-estado-categoria-producto-base/<int:categoria_pb_id>/', views.CambiarEstadoCategoriaProductoBase.as_view(), name='cambiar-estado-categoria-producto-base'),
     path('editar-categoria-producto-base/<int:categoria_PB_id>/', views.EditarCategoriaProductoBase.as_view(), name='editar-categoria-producto-base'),
     
     #URL productos base
@@ -51,8 +52,6 @@ urlpatterns=[
     path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar_producto_base'),
     path('productos_por_categoria/<int:categoria_id>/', views.ListarCategoriaProductoBase.as_view(), name='productos_por_categoria'),
     path('cambiar-estado-producto-base/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar-estado-producto-base'),
-
-
 
 
     #URL clientes
