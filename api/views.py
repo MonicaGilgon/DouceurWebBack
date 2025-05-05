@@ -828,6 +828,56 @@ class CrearArticulo(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Error al crear el artículo: {str(e)}"}, status=500)
 
+
+#Editar artículo
+class EditarArticulo(APIView):
+    def get(self, request, articulo_id):
+        articulo = get_object_or_404(Articulo, id=articulo_id)
+        csrf_token = get_token(request)
+        return JsonResponse({
+            'nombre': articulo.nombre,
+            'categoriaArticulo': articulo.categoriaArticulo.id if articulo.categoriaArticulo else None,
+            'csrf_token': csrf_token
+        })
+
+    def put(self, request, articulo_id):
+        articulo = get_object_or_404(Articulo, id=articulo_id)
+        
+        try:
+            data = json.loads(request.body)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+        nombre = data.get('nombre')    
+        if not nombre:
+            return JsonResponse({'error': 'El campo nombre no puede estar vacío.'}, status=400)
+        
+        # Actualización de campos
+        articulo.nombre = nombre
+       
+        # Actualización de categoriaArticulo si es necesario
+        categoria_id = data.get('categoriaArticulo')
+        if categoria_id:
+            articulo.categoriaArticulo_id = categoria_id
+
+        try:
+            articulo.save()
+            return JsonResponse({'success': True, 'message': f"Artículo '{articulo.nombre}' editado correctamente."}, status=200)
+        except IntegrityError as e:
+            return JsonResponse({'error': str(e)}, status=400)
+    
+    def post(self, request, articulo_id):
+        return JsonResponse({'error': 'Método no permitido.'}, status=405)
+
+class ArticuloPorCategoria(APIView):
+    def get(self, request, categoria_id):
+        articulos = Articulo.objects.filter(categoriaArticulo=categoria_id)
+        serializer = ArticuloSerializer(articulos, many=True)
+        return Response(serializer.data)
+
+
+
+
 #Listar articulo
 class ListarArticulos(APIView):
     def get(self, request):
@@ -960,7 +1010,7 @@ class EditarProductoBase(APIView):
             'csrf_token': csrf_token
         })
 
-    def post(self, request, producto_id):
+    def put(self, request, producto_id):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
         try:
             data = json.loads(request.body)
@@ -976,6 +1026,11 @@ class EditarProductoBase(APIView):
         imagen = data.get('imagen')
 
         try:
+            if not nombre:
+                return JsonResponse({"error": "El nombre no puede estar vacío."}, status=400)
+            if ProductoBase.objects.filter(nombre=nombre).exclude(id=producto_base.id).exists():
+                return JsonResponse({"error": "Ya existe un producto con ese nombre."}, status=400)
+
             # Convertir IDs en instancias
             categoriaProductoBase = get_object_or_404(CategoriaProductoBase, id=categoriaProductoBase_id)
             
@@ -984,7 +1039,7 @@ class EditarProductoBase(APIView):
             producto_base.descripcion = descripcion
             producto_base.precio = precio
             producto_base.categoriaProductoBase = categoriaProductoBase
-            producto_base.articulos = articulos
+            producto_base.articulos.set(articulos)
 
             if imagen:  # Si la imagen fue actualizada
                 producto_base.imagen = imagen

@@ -33,8 +33,7 @@ urlpatterns=[
     path('crear-articulo/', views.CrearArticulo.as_view(), name='crear-articulo'),
     path('listar-articulos/', views.ListarArticulos.as_view(), name='listar-articulos'),
     path('articulos-por-categoria/<int:categoria_id>/', views.ArticulosPorCategoria.as_view(), name='articulos-por-categoria'),
-    #falta cambiar estado articulo
-    #path('editar_articulo/<int:articulo_id>/', views.EditarArticulo.as_view(), name='editar_articulo'),
+    path('editar-articulo/<int:articulo_id>/', views.EditarArticulo.as_view(), name='editar-articulo'),
     #path('articulo/<int:id>/', views.ArticuloDetailView.as_view(), name='articulo-detail'),
     
 
