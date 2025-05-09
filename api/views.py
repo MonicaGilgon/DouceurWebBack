@@ -100,6 +100,8 @@ class LoginView(APIView):
                     "nombre": user.nombre_completo,
                     "correo": user.correo,
                     "rol": user.rol.nombre,
+                    "telefono": user.telefono,
+                    "direccion": user.direccion,
                     "estado": user.estado
                 }
             }, status=200)
