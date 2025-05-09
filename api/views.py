@@ -25,6 +25,8 @@ from django.core.validators import EmailValidator
 from django.core.exceptions import ValidationError
 from django.contrib.auth.decorators import login_required
 from rest_framework import generics, permissions
+from django.contrib import messages
+from django.template.loader import render_to_string
 
 
 # INDEX
@@ -1053,3 +1055,110 @@ class EditarProductoBase(APIView):
             return JsonResponse({'error': str(e)}, status=400)
 
 
+
+#CARRITO DE COMPRAS
+def AddToCart(request):
+    product_id = request.GET.get('id')
+    title = request.GET.get('title')
+    qty = request.GET.get('qty')
+    price = request.GET.get('price')
+
+    if not all([product_id, title, qty, price]):
+        return JsonResponse({'error': 'Faltan parAmetros requeridos'}, status=400)
+
+
+    cart_product = {
+        str(product_id): {
+            'title': title,
+            'qty': qty,
+            'price': price,
+        }
+    }
+
+    if 'cart_data_obj' in request.session:
+        cart_data = request.session['cart_data_obj']
+        if str(product_id) in cart_data:
+            cart_data[str(product_id)]['qty'] = int(qty)
+        else:
+            cart_data.update(cart_product)
+        request.session['cart_data_obj'] = cart_data
+    else:
+        request.session['cart_data_obj'] = cart_product
+
+    return JsonResponse({
+        "data": request.session['cart_data_obj'],
+        'totalcartitems': len(request.session['cart_data_obj'])
+    })
+
+
+class CartView(APIView):
+    def get(self, request, *args, **kwargs):
+        cart_data = request.session.get('cart', {})
+        cart_total_amount = sum(
+            float(item['price']) * item['qty'] for item in cart_data.values()
+        )
+        return Response({
+            'cart': cart_data,
+            'total': round(cart_total_amount, 2)
+        })
+    
+
+def DeleteFromCart(request):
+    product_id = request.GET.get('id')
+    
+    if not product_id:
+        return JsonResponse({'error': 'No se proporcionO el ID del producto'}, status=400)
+
+    cart_data = request.session.get('cart_data_obj', {})
+    
+    if product_id in cart_data:
+        del cart_data[product_id]
+        request.session['cart_data_obj'] = cart_data
+    
+    cart_total_amount = sum(int(item['qty']) * float(item['price']) for item in cart_data.values())
+
+    context = render_to_string("polls/cart.html", {
+        "cart_data": cart_data,
+        'totalcartitems': len(cart_data),
+        'cart_total_amount': cart_total_amount
+    })
+
+    return JsonResponse({
+        "data": context,
+        'totalcartitems': len(cart_data)
+    })
+        
+
+
+def UpdateCart(request):
+    product_id = request.GET.get('id')
+    product_qty = request.GET.get('qty')
+
+    if not product_id or not product_qty:
+        return JsonResponse({'error': 'Faltan parAmetros "id" o "qty".'}, status=400)
+
+    try:
+        product_qty = int(product_qty)
+    except ValueError:
+        return JsonResponse({'error': 'El paráAetro "qty" debe ser un nUmero entero.'}, status=400)
+
+    if 'cart_data_obj' in request.session:
+        if product_id in request.session['cart_data_obj']:
+            cart_data = request.session['cart_data_obj']
+            cart_data[product_id]['qty'] = product_qty  # Actualiza la cantidad
+            request.session['cart_data_obj'] = cart_data
+
+    # Recalcular el total del carrito
+    cart_total_amount = 0
+    updated_subtotal = 0
+    if 'cart_data_obj' in request.session and product_id in request.session['cart_data_obj']:
+        item = request.session['cart_data_obj'][product_id]
+        updated_subtotal = item['price'] * item['qty']
+        for item in request.session['cart_data_obj'].values():
+            cart_total_amount += item['price'] * item['qty']
+
+    return JsonResponse({
+        'message': 'Carrito actualizado correctamente.',
+        'subtotal': updated_subtotal,
+        'total': cart_total_amount
+    })

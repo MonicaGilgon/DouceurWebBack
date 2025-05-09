@@ -63,6 +63,13 @@ urlpatterns=[
     path('editar-vendedor/<int:vendedor_id>/', views.EditarVendedor.as_view(), name='editar-vendedor'),
     
 
+
+    #CART
+    path('add-to-cart/', views.AddToCart, name="add-to-cart"),
+    path('cart/', views.CartView.as_view(), name="cart"),
+    path('delete-from-cart/', views.DeleteFromCart, name="delete-from-cart"),
+    path('update-cart/', views.UpdateCart, name="update-cart"),
+
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
