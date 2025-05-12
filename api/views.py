@@ -726,9 +726,7 @@ class CrearCategoriaProductoBase(APIView):
             return JsonResponse({"success": f"Categoría producto base {nueva_categoria_producto_base.nombre} creada correctamente."}, status=201)
         except Exception as e:
             return JsonResponse({"error": f"Error al crear la categoría producto base: {str(e)}"}, status=500)
-     
 
-      
 #Listar categoria producto base
 class ListarCategoriaProductoBase(APIView):
     def get(self, request): 
@@ -996,6 +994,80 @@ def products_list_views(request):
         "products": products, 
     }
     #return render(request, '/index.html', context)
+    
+class EditarProductoBase(APIView):
+    def get(self, request, producto_id):
+        producto = get_object_or_404(ProductoBase, id=producto_id)
+
+        fotos = [foto.foto.url for foto in producto.fotos.all()]
+        articulos_ids = list(producto.articulos.values_list('id', flat=True))
+
+        return JsonResponse({
+            'id': producto.id,
+            'nombre': producto.nombre,
+            'descripcion': producto.descripcion,
+            'precio': producto.precio,
+            'estado': producto.estado,
+            'categoriaProductoBase': producto.categoriaProductoBase.id,
+            'articulos': articulos_ids,
+            'fotos': fotos,
+        })
+
+    def post(self, request, producto_id):
+        producto = get_object_or_404(ProductoBase, id=producto_id)
+        try:
+            data = request.POST or request.data
+            nombre = data.get('nombre', producto.nombre)
+            descripcion = data.get('descripcion', producto.descripcion)
+            precio = data.get('precio', producto.precio)
+            categoria_id = data.get('categoriaProductoBase', producto.categoriaProductoBase.id)
+            articulos_ids = json.loads(data.get('articulos', '[]')) if isinstance(data.get('articulos'), str) else data.get('articulos', [])
+            nuevas_fotos = request.FILES.getlist('fotos')
+
+            # Validaciones
+            if not nombre:
+                return JsonResponse({"error": "El nombre es obligatorio."}, status=400)
+            if not descripcion:
+                return JsonResponse({"error": "La descripción es obligatoria."}, status=400)
+            try:
+                precio = float(precio)
+                if precio <= 0:
+                    return JsonResponse({"error": "El precio debe ser mayor que 0."}, status=400)
+            except:
+                return JsonResponse({"error": "Precio inválido."}, status=400)
+
+            categoria = CategoriaProductoBase.objects.get(id=categoria_id)
+            articulos = Articulo.objects.filter(id__in=articulos_ids)
+
+            if len(articulos) != len(articulos_ids):
+                return JsonResponse({"error": "Uno o más artículos no existen."}, status=400)
+
+            producto.nombre = nombre
+            producto.descripcion = descripcion
+            producto.precio = precio
+            producto.categoriaProductoBase = categoria
+            producto.save()
+            producto.articulos.set(articulos)
+
+            # Guardar nuevas imágenes si las hay
+            for img in nuevas_fotos:
+                ProductoBaseFoto.objects.create(productoBase=producto, foto=img)
+
+            return JsonResponse({"success": f"Producto '{producto.nombre}' editado correctamente."}, status=200)
+
+        except Exception as e:
+            return JsonResponse({"error": f"Error al editar el producto base: {str(e)}"}, status=500)
+
+class CambiarEstadoProductoBase(APIView):
+    def patch(self, request, producto_id):
+        producto = get_object_or_404(ProductoBase, id=producto_id)
+        estado = request.data.get('estado')
+        if estado is not None:
+            producto.estado = bool(estado)
+            producto.save()
+            return Response({'status': 'ok', 'activo': producto.estado}, status=status.HTTP_200_OK)
+        return Response({'status': 'error', 'message': 'El campo estado es requerido.'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 
 
