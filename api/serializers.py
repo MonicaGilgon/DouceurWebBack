@@ -56,10 +56,17 @@ class VendedorSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
 
+class ProductoBaseFotoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProductoBaseFoto
+        fields = ['foto']
+
+
 class ProductoBaseSerializer(serializers.ModelSerializer):
     categoriaProductoBase = CategoriaProductoBaseSerializer()
     articulos = ArticuloSerializer(many=True, read_only=True)
     imagen_url = serializers.SerializerMethodField()
+    fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
 
     class Meta:
         model = ProductoBase
@@ -70,53 +77,22 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
             return obj.imagen.url
         return None
 
+
     # Sobrescribimos el método create para permitir la creación de fotos junto con el producto base
     def create(self, validated_data):
-        fotos_data = self.context['request'].FILES.getlist(
-            'fotos')  # Obtener las fotos desde los archivos
-        producto_base = ProductoBase.objects.create(**validated_data)
+    # Extraer la imagen manualmente
+        imagen = validated_data.pop('imagen', None)
+        fotos_data = self.context['request'].FILES.getlist('fotos')
+
+        producto_base = ProductoBase.objects.create(imagen=imagen, **validated_data)
 
         for foto in fotos_data:
-            ProductoBaseFoto.objects.create(
-                productoBase=producto_base, foto=foto)
+            ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
 
         return producto_base
+
 
 class ArticulosProductoBaseSerializer(serializers.ModelSerializer):
     class Meta:
         model = ArticulosProductoBase
         fields = '__all__'
-
-class ProductoBaseFotoSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ProductoBaseFoto
-        fields = ['id', 'foto']
-       
-    def validate_foto(self, value):
-        if value.size > 5 * 1024 * 1024:
-            raise serializers.ValidationError("Cada imagen debe pesar menos de 5MB.")
-        if not value.name.lower().endswith(('.jpeg', '.jpg', '.png')):
-            raise serializers.ValidationError("Formato de imagen no permitido. Usa JPG o PNG.")
-        return value
-    
-class ProductoBaseSerializer(serializers.ModelSerializer):
-    fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
-    categoriaProductoBase = serializers.StringRelatedField()
-    articulos = serializers.StringRelatedField(many=True)
-    class Meta:
-        model = ProductoBase
-        fields = ['id', 'nombre', 'descripcion', 'precio', 'imagen', 'estado', 'categoriaProductoBase', 'articulos', 'fotos']
-        
-    def validate_nombre(self, value):
-        if not value.strip():
-            raise serializers.ValidationError("El nombre no puede estar vacío.")
-        if ProductoBase.objects.filter(nombre=value).exists():
-            raise serializers.ValidationError("Ya existe un producto base con ese nombre.")
-        return value
-
-    def create(self, validated_data):
-        fotos_data = validated_data.pop('fotos', [])
-        producto = ProductoBase.objects.create(**validated_data)
-        for foto in fotos_data[:5]:  # Solo permitir máximo 5 imágenes
-            ProductoBaseFoto.objects.create(productoBase=producto, foto=foto)
-        return producto

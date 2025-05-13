@@ -27,7 +27,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework import generics, permissions
 from django.contrib import messages
 from django.template.loader import render_to_string
-
+from rest_framework.parsers import MultiPartParser, FormParser
 
 # INDEX
 def index(request):
@@ -905,7 +905,18 @@ class ArticulosPorCategoria(APIView):
 #//////////////////////////////////////////////////////////
 #PRODUCTO BASE
 #Crear producto base
+from rest_framework.views import APIView
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.response import Response
+from django.http import JsonResponse
+from django.shortcuts import get_object_or_404
+import json
+
+from .models import ProductoBase, ProductoBaseFoto, CategoriaProductoBase, Articulo
+from .serializers import ProductoBaseSerializer
+
 class CrearProductoBase(APIView):
+    parser_classes = [MultiPartParser, FormParser] 
     def post(self, request):
         try:
             nombre = request.data.get('nombre')
@@ -956,7 +967,8 @@ class CrearProductoBase(APIView):
                 descripcion=descripcion,
                 precio=precio,
                 estado=True,
-                categoriaProductoBase=categoriaProductoBase,                
+                categoriaProductoBase=categoriaProductoBase,
+                imagen=imagen  # ✅ Aquí está la solución
             )
             nuevo_producto_base.save()
 
@@ -970,7 +982,6 @@ class CrearProductoBase(APIView):
             return JsonResponse({"success": f"Producto '{nuevo_producto_base.nombre}' creado correctamente."}, status=201)
         except Exception as e:
             return JsonResponse({"error": f"Error al crear el producto base: {str(e)}"}, status=500)
-        
 
 def product_detail(request, id):
     producto = get_object_or_404(ProductoBase, id=id)
@@ -1000,6 +1011,8 @@ def products_list_views(request):
 
 
 class EditarProductoBase(APIView):
+    parser_classes = [MultiPartParser, FormParser]  # ✅ Habilita archivos
+
     def get(self, request, producto_id):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
         csrf_token = get_token(request)
@@ -1011,52 +1024,74 @@ class EditarProductoBase(APIView):
             'categoriaProductoBase': producto_base.categoriaProductoBase.id,
             'articulos': list(producto_base.articulos.values('id', 'nombre')),
             'imagen': producto_base.imagen.url if producto_base.imagen else None,
-            'csrf_token': csrf_token
+            'csrf_token': csrf_token,
+            'fotos': [
+                {"id": foto.id, "url": foto.foto.url}
+                for foto in producto_base.fotos.all()
+            ],
         })
 
     def put(self, request, producto_id):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
-        try:
-            data = json.loads(request.body)
-        except json.JSONDecodeError:
-            return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        
-        # Asignar datos recibidos
-        nombre = data.get('nombre')
-        descripcion = data.get('descripcion')
-        precio = data.get('precio')
-        categoriaProductoBase_id = data.get('categoriaProductoBase')  # ID recibido
-        articulos = data.get('articulos')
-        imagen = data.get('imagen')
 
         try:
+            nombre = request.data.get("nombre")
+            descripcion = request.data.get("descripcion")
+            precio = request.data.get("precio")
+            estado_raw = request.data.get("estado", "true")
+            estado = estado_raw.lower() == "true" if isinstance(estado_raw, str) else bool(estado_raw)
+
+            categoria_id = request.data.get("categoriaProductoBase")
+            articulos_raw = request.data.get("articulos", "[]")
+            imagen = request.FILES.get("imagen")  # ✅ Aquí tomamos la imagen correctamente
+
+            # Parsear artículos
+            articulos = json.loads(articulos_raw) if isinstance(articulos_raw, str) else articulos_raw
+
             if not nombre:
                 return JsonResponse({"error": "El nombre no puede estar vacío."}, status=400)
+
             if ProductoBase.objects.filter(nombre=nombre).exclude(id=producto_base.id).exists():
                 return JsonResponse({"error": "Ya existe un producto con ese nombre."}, status=400)
 
-            # Convertir IDs en instancias
-            categoriaProductoBase = get_object_or_404(CategoriaProductoBase, id=categoriaProductoBase_id)
-            
-            # Actualizar campos del producto
+            categoria = get_object_or_404(CategoriaProductoBase, id=categoria_id)
+
             producto_base.nombre = nombre
             producto_base.descripcion = descripcion
             producto_base.precio = precio
-            producto_base.categoriaProductoBase = categoriaProductoBase
+            producto_base.estado = estado
+            producto_base.categoriaProductoBase = categoria
             producto_base.articulos.set(articulos)
 
-            if imagen:  # Si la imagen fue actualizada
+            if imagen:
                 producto_base.imagen = imagen
-            
-            producto_base.save()
 
-            return JsonResponse({'success': True, 'message': f"Producto Base {producto_base.nombre} editado correctamente."}, status=200)
+            producto_base.save()
+            
+            fotos_nuevas = request.FILES.getlist("fotos")
+            for foto in fotos_nuevas:
+                ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
+
+            serializer = ProductoBaseSerializer(producto_base)
+            return JsonResponse(serializer.data, safe=False, status=200)
+
         except CategoriaProductoBase.DoesNotExist:
             return JsonResponse({'error': 'La categoría especificada no existe.'}, status=400)
         except IntegrityError as e:
             return JsonResponse({'error': str(e)}, status=400)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return JsonResponse({'error': f"Error al actualizar: {str(e)}"}, status=500)
 
-
+class EliminarFotoProducto(APIView):
+    def delete(self, request, foto_id):
+        try:
+            foto = ProductoBaseFoto.objects.get(id=foto_id)
+            foto.delete()
+            return JsonResponse({"success": "Imagen eliminada correctamente."}, status=200)
+        except ProductoBaseFoto.DoesNotExist:
+            return JsonResponse({"error": "Imagen no encontrada."}, status=404)
 
 #CARRITO DE COMPRAS
 def AddToCart(request):
