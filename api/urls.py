@@ -70,6 +70,9 @@ urlpatterns=[
     path('delete-from-cart/', views.DeleteFromCart, name="delete-from-cart"),
     path('update-cart/', views.UpdateCart, name="update-cart"),
 
+    #PEDIDOS
+    path('crear-pedido/', views.CreateOrderView.as_view(), name="crear-pedido"),
+
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 

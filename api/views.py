@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
+from .serializers import (CreateOrderSerializer, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -1199,3 +1199,44 @@ def UpdateCart(request):
         'subtotal': updated_subtotal,
         'total': cart_total_amount
     })
+
+from rest_framework import status
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from decimal import Decimal
+
+class CreateOrderView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request, *args, **kwargs):
+        serializer = CreateOrderSerializer(
+            data=request.data, 
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            order = serializer.save()
+            
+            # Guardar información adicional del envío
+            # Podríamos crear un modelo ShippingInfo para esto
+            shipping_info = {
+                'nombre_receptor': serializer.validated_data['nombre_receptor'],
+                'direccion_entrega': serializer.validated_data['direccion_entrega'],
+                'telefono_contacto': serializer.validated_data['telefono_contacto'],
+                'correo_electronico': serializer.validated_data['correo_electronico'],
+                'horario_entrega': serializer.validated_data['horario_entrega'],
+            }
+            
+            # Aquí podrías guardar esta información en un modelo relacionado
+            # Por ahora, la devolvemos en la respuesta
+            
+            return Response({
+                'order_id': order.id,
+                'total_amount': order.total_amount,
+                'status': order.status,
+                'shipping_info': shipping_info,
+                'message': 'Pedido creado exitosamente'
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

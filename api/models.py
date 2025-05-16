@@ -80,11 +80,6 @@ class Order(models.Model):
     class Meta:
         ordering = ['-order_date']  # Ordenar por order_date descendente por defecto
 
-class OrderItem(models.Model):
-     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
-     articulo = models.ForeignKey(Articulo, on_delete=models.CASCADE)
-
-
 
 class ProductoBase(models.Model):
     nombre = models.CharField(max_length=100)
@@ -105,6 +100,19 @@ class ProductoBaseFoto(models.Model):
     def __str__(self):
         return f"Foto de {self.productoBase.nombre}"
 
+class OrderItem(models.Model):
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name='items')
+    producto = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)  # Cambiado de articulo a producto
+    cantidad = models.PositiveIntegerField(default=1)
+    precio_unitario = models.DecimalField(max_digits=10, decimal_places=2)
+    
+    def __str__(self):
+        return f"{self.cantidad} x {self.producto.nombre} en Pedido #{self.order.id}"
+    
+    @property
+    def subtotal(self):
+        return self.cantidad * self.precio_unitario
+
 
 
 class ArticulosProductoBase(models.Model):
@@ -120,4 +128,15 @@ class Personalizado(models.Model):
 
     def __str__(self):
         return self.productoBase.nombre
+    
+class ShippingInfo(models.Model):
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_info')
+    nombre_receptor = models.CharField(max_length=150)
+    direccion_entrega = models.CharField(max_length=255)
+    telefono_contacto = models.CharField(max_length=15)
+    correo_electronico = models.EmailField()
+    horario_entrega = models.CharField(max_length=100)
+    
+    def __str__(self):
+        return f"Información de envío para Pedido #{self.order.id}"
 
