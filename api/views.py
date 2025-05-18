@@ -971,6 +971,14 @@ class CrearProductoBase(APIView):
                 imagen=imagen  # ✅ Aquí está la solución
             )
             nuevo_producto_base.save()
+            
+            # Asociar categorías de artículo
+            categorias_ids = request.data.get('categorias_articulo', '[]')
+            categorias_ids = json.loads(categorias_ids) if isinstance(categorias_ids, str) else categorias_ids
+            categorias = CategoriaArticulo.objects.filter(id__in=categorias_ids)
+            if len(categorias) != len(categorias_ids):
+                return JsonResponse({"error": "Una o más categorías de artículo no existen."}, status=400)
+            nuevo_producto_base.categorias_articulo.set(categorias)
 
             # Asociar artículos
             nuevo_producto_base.articulos.set(articulos)
@@ -1023,6 +1031,7 @@ class EditarProductoBase(APIView):
             'estado': producto_base.estado,
             'categoriaProductoBase': producto_base.categoriaProductoBase.id,
             'articulos': list(producto_base.articulos.values('id', 'nombre')),
+            'categorias_articulo': list(producto_base.categorias_articulo.values('id', 'nombre')),
             'imagen': producto_base.imagen.url if producto_base.imagen else None,
             'csrf_token': csrf_token,
             'fotos': [
@@ -1030,6 +1039,7 @@ class EditarProductoBase(APIView):
                 for foto in producto_base.fotos.all()
             ],
         })
+
 
     def put(self, request, producto_id):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
@@ -1067,6 +1077,14 @@ class EditarProductoBase(APIView):
                 producto_base.imagen = imagen
 
             producto_base.save()
+            
+            # Actualizar categorías de artículo
+            categorias_ids = request.data.get('categorias_articulo', '[]')
+            categorias_ids = json.loads(categorias_ids) if isinstance(categorias_ids, str) else categorias_ids
+            categorias = CategoriaArticulo.objects.filter(id__in=categorias_ids)
+            if len(categorias) != len(categorias_ids):
+                return JsonResponse({"error": "Una o más categorías de artículo no existen."}, status=400)
+            producto_base.categorias_articulo.set(categorias)             
             
             fotos_nuevas = request.FILES.getlist("fotos")
             for foto in fotos_nuevas:

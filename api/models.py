@@ -18,12 +18,12 @@ class Persona(models.Model):
 class Usuario(AbstractUser, Persona):
     username = models.CharField(max_length=150, blank=True, null=True, unique=True)
     correo = models.EmailField(unique=True)
-    rol = models.ForeignKey(Rol, on_delete=models.CASCADE)
+    rol = models.ForeignKey(Rol, on_delete=models.CASCADE, null=True)
     estado = models.BooleanField(default=True)
     document_number = models.CharField(max_length=50, blank=True, null=True)
 
     USERNAME_FIELD = 'correo'
-    REQUIRED_FIELDS = []
+    REQUIRED_FIELDS = ['username']
 
     def __str__(self):
         return self.correo
@@ -89,6 +89,7 @@ class ProductoBase(models.Model):
     estado = models.BooleanField(default=True)
     categoriaProductoBase = models.ForeignKey(CategoriaProductoBase, on_delete=models.CASCADE)
     articulos = models.ManyToManyField('Articulo', blank=True)
+    categorias_articulo = models.ManyToManyField(CategoriaArticulo, blank=True, related_name='productos')
 
     def __str__(self):
         return self.nombre
@@ -111,24 +112,7 @@ class OrderItem(models.Model):
     
     @property
     def subtotal(self):
-        return self.cantidad * self.precio_unitario
-
-
-
-class ArticulosProductoBase(models.Model):
-    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
-    articulo = models.ManyToManyField(Articulo)
-
-
-class Personalizado(models.Model):
-    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
-    categoriaArticulo = models.ForeignKey(CategoriaArticulo, on_delete=models.CASCADE)
-    productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE)
-    articuloSeleccionado = models.ForeignKey(ArticulosProductoBase, on_delete=models.CASCADE)
-
-    def __str__(self):
-        return self.productoBase.nombre
-    
+        return self.cantidad * self.precio_unitario   
 class ShippingInfo(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_info')
     nombre_receptor = models.CharField(max_length=150)

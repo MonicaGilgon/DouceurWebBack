@@ -1,6 +1,6 @@
 from decimal import Decimal
 from rest_framework import serializers
-from .models import (Rol, Persona, ShippingInfo, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, ProductoBaseFoto, ArticulosProductoBase, Order, OrderItem)
+from .models import (Rol, Persona, ShippingInfo, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, ProductoBaseFoto, Order, OrderItem)
 
 class RolSerializer(serializers.ModelSerializer):
     class Meta:
@@ -64,7 +64,19 @@ class ProductoBaseFotoSerializer(serializers.ModelSerializer):
 
 
 class ProductoBaseSerializer(serializers.ModelSerializer):
-    categoriaProductoBase = CategoriaProductoBaseSerializer()
+    categoriaProductoBase = CategoriaProductoBaseSerializer(read_only=True)
+    categoriaProductoBase_id = serializers.PrimaryKeyRelatedField(
+        queryset=CategoriaProductoBase.objects.filter(estado=True),
+        source='categoriaProductoBase',
+        write_only=True
+    )
+
+    categorias_articulo = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=CategoriaArticulo.objects.filter(estado=True),
+        required=False
+    )
+    
     articulos = ArticuloSerializer(many=True, read_only=True)
     imagen_url = serializers.SerializerMethodField()
     fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
@@ -93,10 +105,11 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         return producto_base
 
 
-class ArticulosProductoBaseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ArticulosProductoBase
-        fields = '__all__'
+#class 
+# Serializer(serializers.ModelSerializer):
+ #   class Meta:
+  #      model = ArticulosProductoBase
+   #     fields = '__all__'
 
 class CreateOrderItemSerializer(serializers.Serializer):
     producto_id = serializers.IntegerField()
