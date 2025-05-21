@@ -28,40 +28,26 @@ class ArticuloSerializer(serializers.ModelSerializer):
         model = Articulo
         fields = '__all__'
 
-class OrderItemSerializer(serializers.ModelSerializer):
-    articulo = ArticuloSerializer()
+#class OrderItemSerializer(serializers.ModelSerializer):
+ #   articulo = ArticuloSerializer()
+#
+ #   class Meta:
+  #      model = OrderItem
+   #     fields = ['articulo', #'quantity',
+    #               #'price'
+     #              ]
 
-    class Meta:
-        model = OrderItem
-        fields = ['articulo', #'quantity',
-                   #'price'
-                   ]
-
-class OrderSerializer(serializers.ModelSerializer):
-    items = OrderItemSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Order
-        fields = ['id', 'order_date', 'total_amount', 'status', 'items']
-
-class UsuarioSerializer(serializers.ModelSerializer):
-    rol = serializers.CharField(source='rol.nombre')
-    orders = OrderSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Usuario
-        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders']
-
-class VendedorSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Usuario
-        fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
+#class OrderSerializer(serializers.ModelSerializer):
+ #   items = OrderItemSerializer(many=True, read_only=True)
+#
+ #   class Meta:
+  #      model = Order
+   #     fields = ['id', 'order_date', 'total_amount', 'status', 'items']
 
 class ProductoBaseFotoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductoBaseFoto
         fields = ['foto']
-
 
 class ProductoBaseSerializer(serializers.ModelSerializer):
     categoriaProductoBase = CategoriaProductoBaseSerializer(read_only=True)
@@ -104,17 +90,31 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
 
         return producto_base
 
+class OrderItemSerializer(serializers.ModelSerializer):
+    producto = ProductoBaseSerializer(read_only=True)  # Cambiado de articulo a producto para coincidir con el modelo
 
-#class 
-# Serializer(serializers.ModelSerializer):
- #   class Meta:
-  #      model = ArticulosProductoBase
-   #     fields = '__all__'
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'producto', 'cantidad', 'precio_unitario', 'subtotal']   
 
 class CreateOrderItemSerializer(serializers.Serializer):
     producto_id = serializers.IntegerField()
     cantidad = serializers.IntegerField(min_value=1)
     precio_unitario = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+class ShippingInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ShippingInfo
+        fields = ['nombre_receptor', 'direccion_entrega', 'telefono_contacto', 
+                  'correo_electronico', 'horario_entrega']
+
+class OrderResponseSerializer(serializers.ModelSerializer):
+    items = OrderItemSerializer(many=True, read_only=True)
+    shipping_info = ShippingInfoSerializer(read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = ['id', 'order_date', 'total_amount', 'status', 'items', 'shipping_info']
 
 class CreateOrderSerializer(serializers.Serializer):
     items = CreateOrderItemSerializer(many=True)
@@ -163,3 +163,31 @@ class CreateOrderSerializer(serializers.Serializer):
             )
         
         return order
+    
+    def to_representation(self, instance):
+        """
+        Sobrescribimos este método para usar OrderResponseSerializer
+        para la representación del objeto creado
+        """
+        return OrderResponseSerializer(instance, context=self.context).data
+
+class UsuarioSerializer(serializers.ModelSerializer):
+    rol = serializers.CharField(source='rol.nombre')
+    #orders = CreateOrderSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Usuario
+        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']#, 'orders']
+
+class VendedorSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
+
+
+#class 
+# Serializer(serializers.ModelSerializer):
+ #   class Meta:
+  #      model = ArticulosProductoBase
+   #     fields = '__all__'
+

@@ -112,7 +112,8 @@ class OrderItem(models.Model):
     
     @property
     def subtotal(self):
-        return self.cantidad * self.precio_unitario   
+        return self.cantidad * self.precio_unitario  
+     
 class ShippingInfo(models.Model):
     order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_info')
     nombre_receptor = models.CharField(max_length=150)

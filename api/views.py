@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (CreateOrderSerializer, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
+from .serializers import (CreateOrderSerializer, OrderResponseSerializer, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -1236,24 +1236,11 @@ class CreateOrderView(APIView):
         if serializer.is_valid():
             order = serializer.save()
             
-            # Guardar información adicional del envío
-            # Podríamos crear un modelo ShippingInfo para esto
-            shipping_info = {
-                'nombre_receptor': serializer.validated_data['nombre_receptor'],
-                'direccion_entrega': serializer.validated_data['direccion_entrega'],
-                'telefono_contacto': serializer.validated_data['telefono_contacto'],
-                'correo_electronico': serializer.validated_data['correo_electronico'],
-                'horario_entrega': serializer.validated_data['horario_entrega'],
-            }
-            
-            # Aquí podrías guardar esta información en un modelo relacionado
-            # Por ahora, la devolvemos en la respuesta
+            # Usar el serializador de respuesta para devolver los datos
+            response_serializer = OrderResponseSerializer(order)
             
             return Response({
-                'order_id': order.id,
-                'total_amount': order.total_amount,
-                'status': order.status,
-                'shipping_info': shipping_info,
+                'order': response_serializer.data,
                 'message': 'Pedido creado exitosamente'
             }, status=status.HTTP_201_CREATED)
         
