@@ -1221,8 +1221,13 @@ def UpdateCart(request):
 from rest_framework import status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from decimal import Decimal
+from django.db.models.functions import TruncDate
+from django.db.models import Sum, Count, Avg
+from datetime import datetime
+from .models import Order, OrderItem
+from .serializers import OrderResponseSerializer
 
 class CreateOrderView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1245,3 +1250,215 @@ class CreateOrderView(APIView):
             }, status=status.HTTP_201_CREATED)
         
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+class OrderListView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request):
+        status_filter = request.query_params.get('status')
+        
+        orders = Order.objects.all().select_related('user', 'shipping_info')
+        
+        if status_filter:
+            orders = orders.filter(status=status_filter)
+            
+        serializer = OrderResponseSerializer(orders, many=True)
+        return Response(serializer.data)
+
+class OrderDetailView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id)
+            serializer = OrderResponseSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Pedido no encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class UpdateOrderStatusView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def patch(self, request, order_id):
+        try:
+            order = Order.objects.get(id=order_id)
+            
+            new_status = request.data.get('status')
+            if not new_status or new_status not in [s[0] for s in Order.STATUS_CHOICES]:
+                return Response(
+                    {"error": "Estado no válido"}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            order.status = new_status
+            order.save()
+            
+            serializer = OrderResponseSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Pedido no encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class SalesReportView(APIView):
+    permission_classes = [IsAuthenticated, IsAdminUser]
+    
+    def get(self, request):
+        start_date = request.query_params.get('start_date')
+        end_date = request.query_params.get('end_date')
+        
+        if not start_date or not end_date:
+            return Response(
+                {"error": "Se requieren fechas de inicio y fin"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        try:
+            start_date = datetime.strptime(start_date, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        except ValueError:
+            return Response(
+                {"error": "Formato de fecha inválido. Use YYYY-MM-DD"}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+            
+        # Filtrar pedidos por rango de fechas
+        orders = Order.objects.filter(
+            order_date__date__gte=start_date,
+            order_date__date__lte=end_date
+        )
+        
+        # Calcular estadísticas
+        total_orders = orders.count()
+        total_sales = orders.aggregate(total=Sum('total_amount'))['total'] or 0
+        delivered_orders = orders.filter(status='entregado').count()
+        average_order_value = orders.aggregate(avg=Avg('total_amount'))['avg'] or 0
+        
+        # Ventas por día
+        sales_by_date = orders.annotate(
+            date=TruncDate('order_date')
+        ).values('date').annotate(
+            total=Sum('total_amount'),
+            count=Count('id')
+        ).order_by('date')
+        
+        # Pedidos por estado
+        sales_by_status = orders.values('status').annotate(
+            count=Count('id'),
+            total=Sum('total_amount')
+        ).order_by('status')
+        
+        # Formatear datos para la respuesta
+        sales_by_date_formatted = [
+            {
+                'date': item['date'].strftime('%Y-%m-%d'),
+                'total': float(item['total']),
+                'count': item['count']
+            }
+            for item in sales_by_date
+        ]
+        
+        sales_by_status_formatted = [
+            {
+                'status': item['status'],
+                'count': item['count'],
+                'total': float(item['total'])
+            }
+            for item in sales_by_status
+        ]
+        
+        return Response({
+            'total_orders': total_orders,
+            'total_sales': float(total_sales),
+            'delivered_orders': delivered_orders,
+            'average_order_value': float(average_order_value),
+            'sales_by_date': sales_by_date_formatted,
+            'sales_by_status': sales_by_status_formatted
+        })
+    
+class VendedorOrderListView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        # Verificar que el usuario sea vendedor
+        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
+            return Response(
+                {"error": "No tienes permisos para ver los pedidos"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        status_filter = request.query_params.get('status')
+        
+        orders = Order.objects.all().select_related('user', 'shipping_info')
+        
+        if status_filter:
+            orders = orders.filter(status=status_filter)
+            
+        serializer = OrderResponseSerializer(orders, many=True)
+        return Response(serializer.data)
+
+class VendedorOrderDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request, order_id):
+        # Verificar que el usuario sea vendedor
+        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
+            return Response(
+                {"error": "No tienes permisos para ver los detalles del pedido"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        try:
+            order = Order.objects.get(id=order_id)
+            serializer = OrderResponseSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Pedido no encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+class VendedorUpdateOrderStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def patch(self, request, order_id):
+        # Verificar que el usuario sea vendedor
+        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
+            return Response(
+                {"error": "No tienes permisos para actualizar el estado del pedido"}, 
+                status=status.HTTP_403_FORBIDDEN
+            )
+            
+        try:
+            order = Order.objects.get(id=order_id)
+            
+            new_status = request.data.get('status')
+            current_status = order.status
+            
+            # Vendedores solo pueden actualizar de pendiente a enviado, o de enviado a entregado
+            allowed_transitions = {
+                'pendiente': ['enviado'],
+                'enviado': ['entregado']
+            }
+            
+            if (current_status not in allowed_transitions or 
+                new_status not in allowed_transitions.get(current_status, [])):
+                return Response(
+                    {"error": "No puedes cambiar el estado del pedido a " + new_status}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+                
+            order.status = new_status
+            order.save()
+            
+            serializer = OrderResponseSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Pedido no encontrado"}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

@@ -37,12 +37,10 @@ class ArticuloSerializer(serializers.ModelSerializer):
     #               #'price'
      #              ]
 
-#class OrderSerializer(serializers.ModelSerializer):
- #   items = OrderItemSerializer(many=True, read_only=True)
-#
- #   class Meta:
-  #      model = Order
-   #     fields = ['id', 'order_date', 'total_amount', 'status', 'items']
+class OrderSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Order
+        fields = ['id', 'order_date', 'status', 'total_amount']
 
 class ProductoBaseFotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -107,14 +105,23 @@ class ShippingInfoSerializer(serializers.ModelSerializer):
         model = ShippingInfo
         fields = ['nombre_receptor', 'direccion_entrega', 'telefono_contacto', 
                   'correo_electronico', 'horario_entrega']
+        
+class UsuarioSerializer(serializers.ModelSerializer):
+    rol = serializers.CharField(source='rol.nombre')
+    #orders = OrderSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Usuario
+        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']#, 'orders']
 
 class OrderResponseSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     shipping_info = ShippingInfoSerializer(read_only=True)
+    user = UsuarioSerializer(read_only=True)
     
     class Meta:
         model = Order
-        fields = ['id', 'order_date', 'total_amount', 'status', 'items', 'shipping_info']
+        fields = ['id', 'order_date', 'total_amount', 'status', 'items', 'shipping_info', 'user']
 
 class CreateOrderSerializer(serializers.Serializer):
     items = CreateOrderItemSerializer(many=True)
@@ -171,13 +178,7 @@ class CreateOrderSerializer(serializers.Serializer):
         """
         return OrderResponseSerializer(instance, context=self.context).data
 
-class UsuarioSerializer(serializers.ModelSerializer):
-    rol = serializers.CharField(source='rol.nombre')
-    #orders = CreateOrderSerializer(many=True, read_only=True)
 
-    class Meta:
-        model = Usuario
-        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']#, 'orders']
 
 class VendedorSerializer(serializers.ModelSerializer):
     class Meta:

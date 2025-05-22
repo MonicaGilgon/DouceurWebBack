@@ -3,7 +3,7 @@ from rest_framework import routers
 from api import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import ProfileView, CrearProductoBase, ListarProductoBase
+from .views import OrderDetailView, OrderListView, ProfileView, CrearProductoBase, ListarProductoBase, SalesReportView, UpdateOrderStatusView, VendedorOrderDetailView, VendedorOrderListView, VendedorUpdateOrderStatusView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = "api"
@@ -72,6 +72,15 @@ urlpatterns=[
 
     #PEDIDOS
     path('crear-pedido/', views.CreateOrderView.as_view(), name="crear-pedido"),
+    path('listar-pedidos/', OrderListView.as_view(), name='listar-pedidos'),
+    path('detalle-pedido/<int:order_id>/', OrderDetailView.as_view(), name='detalle-pedido'),
+    path('actualizar-estado-pedido/<int:order_id>/', UpdateOrderStatusView.as_view(), name='actualizar-estado-pedido'),
+    path('informe-ventas/', SalesReportView.as_view(), name='informe-ventas'),
+
+    # URLs para gestión de pedidos de vendedores
+    path('vendedor/listar-pedidos/', VendedorOrderListView.as_view(), name='vendedor-listar-pedidos'),
+    path('vendedor/detalle-pedido/<int:order_id>/', VendedorOrderDetailView.as_view(), name='vendedor-detalle-pedido'),
+    path('vendedor/actualizar-estado-pedido/<int:order_id>/', VendedorUpdateOrderStatusView.as_view(), name='vendedor-actualizar-estado-pedido'),
 
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
