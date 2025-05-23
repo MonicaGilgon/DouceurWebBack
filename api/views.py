@@ -1227,7 +1227,7 @@ from django.db.models.functions import TruncDate
 from django.db.models import Sum, Count, Avg
 from datetime import datetime
 from .models import Order, OrderItem
-from .serializers import OrderResponseSerializer
+from .serializers import OrderSerializer
 
 class CreateOrderView(APIView):
     permission_classes = [IsAuthenticated]
@@ -1252,12 +1252,13 @@ class CreateOrderView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
 class OrderListView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    
+    def patch(self, request, order_id):
+        if request.user.rol.nombre not in ['vendedor', 'admin']:
+            return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
     def get(self, request):
         status_filter = request.query_params.get('status')
         
-        orders = Order.objects.all().select_related('user', 'shipping_info')
+        orders = Order.objects.all().select_related('user', 'shipping_details')
         
         if status_filter:
             orders = orders.filter(status=status_filter)
@@ -1266,7 +1267,9 @@ class OrderListView(APIView):
         return Response(serializer.data)
 
 class OrderDetailView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
+    def patch(self, request, order_id):
+        if request.user.rol.nombre not in ['vendedor', 'admin']:
+            return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
     
     def get(self, request, order_id):
         try:
@@ -1280,29 +1283,48 @@ class OrderDetailView(APIView):
             )
 
 class UpdateOrderStatusView(APIView):
-    permission_classes = [IsAuthenticated, IsAdminUser]
-    
+    permission_classes = [IsAuthenticated]
+
     def patch(self, request, order_id):
+        if request.user.rol.nombre not in ['vendedor', 'admin']:
+            return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             order = Order.objects.get(id=order_id)
-            
             new_status = request.data.get('status')
-            if not new_status or new_status not in [s[0] for s in Order.STATUS_CHOICES]:
-                return Response(
-                    {"error": "Estado no válido"}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
+            current_status = order.status
+
+            allowed_transitions = {
+                'pendiente': ['pago_confirmado', 'rechazado', 'en_preparacion'],
+                'pago_confirmado': ['en_preparacion'],
+                'en_preparacion': ['enviado'],
+                'enviado': ['entregado'],
+            }
+
+            if new_status not in allowed_transitions.get(current_status, []):
+                return Response({"error": f"No puedes cambiar de {current_status} a {new_status}"}, status=status.HTTP_400_BAD_REQUEST)
+
             order.status = new_status
             order.save()
-            
+
             serializer = OrderResponseSerializer(order)
             return Response(serializer.data)
         except Order.DoesNotExist:
-            return Response(
-                {"error": "Pedido no encontrado"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Pedido no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+class ClientOrderDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, order_id):
+        if request.user.rol.nombre != 'cliente':
+            return Response({"error": "No tienes permisos"}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+            serializer = OrderResponseSerializer(order)
+            return Response(serializer.data)
+        except Order.DoesNotExist:
+            return Response({"error": "Pedido no encontrado"}, status=status.HTTP_404_NOT_FOUND)
 
 class SalesReportView(APIView):
     permission_classes = [IsAuthenticated, IsAdminUser]
@@ -1380,85 +1402,39 @@ class SalesReportView(APIView):
             'sales_by_status': sales_by_status_formatted
         })
     
-class VendedorOrderListView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def get(self, request):
-        # Verificar que el usuario sea vendedor
-        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
-            return Response(
-                {"error": "No tienes permisos para ver los pedidos"}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-            
-        status_filter = request.query_params.get('status')
-        
-        orders = Order.objects.all().select_related('user', 'shipping_info')
-        
-        if status_filter:
-            orders = orders.filter(status=status_filter)
-            
-        serializer = OrderResponseSerializer(orders, many=True)
-        return Response(serializer.data)
 
-class VendedorOrderDetailView(APIView):
-    permission_classes = [IsAuthenticated]
     
-    def get(self, request, order_id):
-        # Verificar que el usuario sea vendedor
-        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
-            return Response(
-                {"error": "No tienes permisos para ver los detalles del pedido"}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-            
+
+
+class VerifyPaymentView(APIView):
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request, order_id):
+        if request.user.rol.nombre not in ['vendedor', 'admin']:
+            return Response({"error": "No tienes permisos para verificar pagos"}, status=status.HTTP_403_FORBIDDEN)
+
         try:
             order = Order.objects.get(id=order_id)
-            serializer = OrderResponseSerializer(order)
-            return Response(serializer.data)
-        except Order.DoesNotExist:
-            return Response(
-                {"error": "Pedido no encontrado"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            if order.status != 'pendiente':
+                return Response({"error": "Solo se pueden verificar pedidos pendientes"}, status=status.HTTP_400_BAD_REQUEST)
 
-class VendedorUpdateOrderStatusView(APIView):
-    permission_classes = [IsAuthenticated]
-    
-    def patch(self, request, order_id):
-        # Verificar que el usuario sea vendedor
-        if request.user.rol != 'vendedor' and request.user.rol != 'admin':
-            return Response(
-                {"error": "No tienes permisos para actualizar el estado del pedido"}, 
-                status=status.HTTP_403_FORBIDDEN
-            )
-            
-        try:
-            order = Order.objects.get(id=order_id)
-            
-            new_status = request.data.get('status')
-            current_status = order.status
-            
-            # Vendedores solo pueden actualizar de pendiente a enviado, o de enviado a entregado
-            allowed_transitions = {
-                'pendiente': ['enviado'],
-                'enviado': ['entregado']
-            }
-            
-            if (current_status not in allowed_transitions or 
-                new_status not in allowed_transitions.get(current_status, [])):
-                return Response(
-                    {"error": "No puedes cambiar el estado del pedido a " + new_status}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-                
-            order.status = new_status
+            action = request.data.get('action')  # 'accept' o 'reject'
+            payment_proof = request.FILES.get('payment_proof')
+
+            if action not in ['accept', 'reject']:
+                return Response({"error": "Acción no válida (debe ser 'accept' o 'reject')"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if action == 'accept' and not payment_proof:
+                return Response({"error": "Se requiere soporte de pago para aceptar el pedido"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if action == 'accept':
+                order.status = 'pago_confirmado'
+                order.payment_proof = payment_proof
+            elif action == 'reject':
+                order.status = 'rechazado'
+
             order.save()
-            
-            serializer = OrderResponseSerializer(order)
-            return Response(serializer.data)
+            return Response({"message": f"Pedido {order_id} {action}ado exitosamente", "status": order.status}, status=status.HTTP_200_OK)
         except Order.DoesNotExist:
-            return Response(
-                {"error": "Pedido no encontrado"}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
+            return Response({"error": "Pedido no encontrado"}, status=status.HTTP_404_NOT_FOUND)

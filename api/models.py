@@ -63,19 +63,22 @@ class Articulo(models.Model):
     
 
 class Order(models.Model):
-    STATUS_CHOICES = [
+    STATUS_CHOICES = (
         ('pendiente', 'Pendiente'),
+        ('pago_confirmado', 'Pago Confirmado'),
+        ('rechazado', 'Rechazado'),
+        ('en_preparacion', 'En Preparación'),
         ('enviado', 'Enviado'),
         ('entregado', 'Entregado'),
-        ('cancelado', 'Cancelado'),
-    ]
-    user = models.ForeignKey('api.Usuario', on_delete=models.CASCADE, related_name='orders')
+    )
+    user = models.ForeignKey(Usuario, on_delete=models.CASCADE)
     order_date = models.DateTimeField(auto_now_add=True)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendiente')
+    payment_proof = models.FileField(upload_to='payment_proofs/', null=True, blank=True)
 
     def __str__(self):
-        return f"Order {self.id} by {self.user.correo}"
+        return f"Pedido {self.id} - {self.user.nombre_completo}"
 
     class Meta:
         ordering = ['-order_date']  # Ordenar por order_date descendente por defecto
@@ -115,7 +118,7 @@ class OrderItem(models.Model):
         return self.cantidad * self.precio_unitario  
      
 class ShippingInfo(models.Model):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_info')
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_details')
     nombre_receptor = models.CharField(max_length=150)
     direccion_entrega = models.CharField(max_length=255)
     telefono_contacto = models.CharField(max_length=15)

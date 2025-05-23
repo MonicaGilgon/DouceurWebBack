@@ -37,10 +37,7 @@ class ArticuloSerializer(serializers.ModelSerializer):
     #               #'price'
      #              ]
 
-class OrderSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Order
-        fields = ['id', 'order_date', 'status', 'total_amount']
+
 
 class ProductoBaseFotoSerializer(serializers.ModelSerializer):
     class Meta:
@@ -105,7 +102,13 @@ class ShippingInfoSerializer(serializers.ModelSerializer):
         model = ShippingInfo
         fields = ['nombre_receptor', 'direccion_entrega', 'telefono_contacto', 
                   'correo_electronico', 'horario_entrega']
-        
+
+class OrderSerializer(serializers.ModelSerializer):
+    shipping_details = ShippingInfoSerializer()  # Incluir datos de envío
+
+    class Meta:
+        model = Order
+        fields = ['id', 'user', 'order_date', 'total_amount', 'status', 'payment_proof', 'items', 'shipping_details']
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(source='rol.nombre')
     #orders = OrderSerializer(many=True, read_only=True)

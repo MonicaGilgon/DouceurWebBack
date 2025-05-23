@@ -3,7 +3,7 @@ from rest_framework import routers
 from api import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import OrderDetailView, OrderListView, ProfileView, CrearProductoBase, ListarProductoBase, SalesReportView, UpdateOrderStatusView, VendedorOrderDetailView, VendedorOrderListView, VendedorUpdateOrderStatusView
+from .views import OrderDetailView, OrderListView, ProfileView, ClientOrderDetailView, SalesReportView, UpdateOrderStatusView,VerifyPaymentView
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = "api"
@@ -55,12 +55,13 @@ urlpatterns=[
     #URL clientes
     path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
     path('editar-cliente/<int:cliente_id>/', views.EditarCliente.as_view(), name='editar-cliente'),
-
+    path('cliente/pedidos/<int:order_id>/', ClientOrderDetailView.as_view(), name='cliente-order-detail'),
     #URL Vendedores
     path('crear-vendedor/', views.CrearVendedor.as_view(), name='crear-vendedor'),
     path('listar-vendedores/', views.ListarVendedores.as_view(), name='listar-vendedores'),
     path('cambiar-estado-vendedor/<int:vendedor_id>/', views.CambiarEstadoVendedor.as_view(), name='cambiar-estado-vendedor'),
     path('editar-vendedor/<int:vendedor_id>/', views.EditarVendedor.as_view(), name='editar-vendedor'),
+    
     
 
 
@@ -74,14 +75,9 @@ urlpatterns=[
     path('crear-pedido/', views.CreateOrderView.as_view(), name="crear-pedido"),
     path('listar-pedidos/', OrderListView.as_view(), name='listar-pedidos'),
     path('detalle-pedido/<int:order_id>/', OrderDetailView.as_view(), name='detalle-pedido'),
-    path('actualizar-estado-pedido/<int:order_id>/', UpdateOrderStatusView.as_view(), name='actualizar-estado-pedido'),
     path('informe-ventas/', SalesReportView.as_view(), name='informe-ventas'),
-
-    # URLs para gestión de pedidos de vendedores
-    path('vendedor/listar-pedidos/', VendedorOrderListView.as_view(), name='vendedor-listar-pedidos'),
-    path('vendedor/detalle-pedido/<int:order_id>/', VendedorOrderDetailView.as_view(), name='vendedor-detalle-pedido'),
-    path('vendedor/actualizar-estado-pedido/<int:order_id>/', VendedorUpdateOrderStatusView.as_view(), name='vendedor-actualizar-estado-pedido'),
-
+    path('verificar-pago/<int:order_id>/', VerifyPaymentView.as_view(), name='verify-payment'),
+    path('actualizar-estado-pedido/<int:order_id>/', UpdateOrderStatusView.as_view(), name='actualizar-estado-pedido'),
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
 
