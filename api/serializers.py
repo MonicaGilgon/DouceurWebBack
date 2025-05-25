@@ -47,11 +47,10 @@ class ProductoBaseFotoSerializer(serializers.ModelSerializer):
 class ProductoBaseSerializer(serializers.ModelSerializer):
     categoriaProductoBase = CategoriaProductoBaseSerializer(read_only=True)
     
-    # ✅ Este campo es el que se espera en el FormData como "categoriaProductoBase_id"
     categoriaProductoBase_id = serializers.PrimaryKeyRelatedField(
         queryset=CategoriaProductoBase.objects.filter(estado=True),
         source='categoriaProductoBase',
-        write_only=True  # <- solo se usa para entrada
+        write_only=True
     )
 
     categorias_articulo = serializers.PrimaryKeyRelatedField(
@@ -70,6 +69,11 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
 
     imagen_url = serializers.SerializerMethodField()
     fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
+    
+    fotos_a_eliminar = serializers.ListField(
+        child=serializers.IntegerField(), write_only=True, required=False
+    )
+    eliminar_imagen_principal = serializers.BooleanField(write_only=True, required=False)
 
     class Meta:
         model = ProductoBase
@@ -98,6 +102,16 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         categorias_articulo = validated_data.pop('categorias_articulo', None)
         fotos_data = request.FILES.getlist('fotos') if request else []
 
+        fotos_a_eliminar = validated_data.pop('fotos_a_eliminar', [])
+        eliminar_imagen_principal = validated_data.pop('eliminar_imagen_principal', False)
+        
+        if fotos_a_eliminar:
+            ProductoBaseFoto.objects.filter(id__in=fotos_a_eliminar, productoBase=instance).delete()
+
+        if eliminar_imagen_principal and instance.imagen:
+            instance.imagen.delete(save=False)
+            instance.imagen = None
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 

@@ -49,7 +49,8 @@ urlpatterns=[
     path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
     path('productos-por-categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos-por-categoria'),
     path('foto-producto/<int:foto_id>/', views.EliminarFotoProducto.as_view()),
-
+    path("eliminar-producto-base/<int:producto_id>/", views.EliminarProductoBase.as_view()),
+    
     #URL clientes
     path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
     path('editar-cliente/<int:cliente_id>/', views.EditarCliente.as_view(), name='editar-cliente'),

@@ -1157,6 +1157,19 @@ class EliminarFotoProducto(APIView):
         except ProductoBaseFoto.DoesNotExist:
             return JsonResponse({"error": "Imagen no encontrada."}, status=404)
 
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
+
+@method_decorator(csrf_exempt, name='dispatch')
+class EliminarProductoBase(APIView):
+    def delete(self, request, producto_id):
+        try:
+            producto = ProductoBase.objects.get(id=producto_id)
+            producto.delete()
+            return JsonResponse({"message": "Producto eliminado correctamente."}, status=200)
+        except ProductoBase.DoesNotExist:
+            return JsonResponse({"error": "Producto no encontrado."}, status=404)
+
 #CARRITO DE COMPRAS
 def AddToCart(request):
     product_id = request.GET.get('id')
