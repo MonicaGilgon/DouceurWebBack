@@ -727,7 +727,6 @@ class CrearCategoriaProductoBase(APIView):
         except Exception as e:
             return JsonResponse({"error": f"Error al crear la categoría producto base: {str(e)}"}, status=500)
      
-
       
 #Listar categoria producto base
 class ListarCategoriaProductoBase(APIView):
@@ -810,6 +809,14 @@ class ProductosPorCategoria(APIView):
         return Response(serializer.data)
  """
 
+class CatalogoProductoBase(APIView):
+    def get(self, request):
+        try:
+            productos_visibles = ProductoBase.objects.filter(estado=True)
+            serializer = ProductoBaseSerializer(productos_visibles, many=True)
+            return Response(serializer.data, status=200)
+        except Exception as e:
+            return JsonResponse({"error": f"Error al obtener productos del catálogo: {str(e)}"}, status=500)
 
 
 #/////////////////////////////////////////////////////////////////////////
@@ -873,14 +880,26 @@ class EditarArticulo(APIView):
     def post(self, request, articulo_id):
         return JsonResponse({'error': 'Método no permitido.'}, status=405)
 
+class CambiarEstadoArticulo(APIView):
+    def patch(self, request, articulo_id):
+        try:
+            articulo = Articulo.objects.get(id=articulo_id)
+            nuevo_estado = request.data.get("estado")
+            if nuevo_estado is None:
+                return Response({"error": "Falta el campo 'estado'"}, status=400)
+
+            articulo.estado = nuevo_estado
+            articulo.save()
+            return Response({"message": f"Artículo {'habilitado' if nuevo_estado else 'deshabilitado'} correctamente."})
+        except Articulo.DoesNotExist:
+            return Response({"error": "Artículo no encontrado"}, status=404)
+
+
 class ArticuloPorCategoria(APIView):
     def get(self, request, categoria_id):
         articulos = Articulo.objects.filter(categoriaArticulo=categoria_id)
         serializer = ArticuloSerializer(articulos, many=True)
         return Response(serializer.data)
-
-
-
 
 #Listar articulo
 class ListarArticulos(APIView):
@@ -995,13 +1014,25 @@ def product_detail(request, id):
     producto = get_object_or_404(ProductoBase, id=id)
     return render(request, 'products/detalleProducto.html', {'producto': producto})
 
+class CambiarEstadoProductoBase(APIView):
+    def patch(self, request, producto_id):
+        try:
+            producto = ProductoBase.objects.get(id=producto_id)
+            nuevo_estado = request.data.get("estado")
+            if nuevo_estado is None:
+                return Response({"error": "Falta el campo 'estado'"}, status=400)
 
+            producto.estado = nuevo_estado
+            producto.save()
+            return Response({"message": f"Producto {'habilitado' if nuevo_estado else 'deshabilitado'} correctamente."})
+        except ProductoBase.DoesNotExist:
+            return Response({"error": "Producto no encontrado"}, status=404)
 
 #Listar producto base
 class ListarProductoBase(APIView):
     def get(self, request):
         try:
-            productoBase = ProductoBase.objects.filter(estado=True)
+            productoBase = ProductoBase.objects.all()
             serializer = ProductoBaseSerializer(productoBase, many=True)
             return Response(serializer.data, status=200)
         except Exception as e:
@@ -1009,7 +1040,7 @@ class ListarProductoBase(APIView):
 
 def products_list_views(request):
     # Filtrar productos con estado=True
-    products = ProductoBase.objects.filter(estado=True)
+    productoBase = ProductoBase.objects.all()
 
     context = {
         "products": products, 

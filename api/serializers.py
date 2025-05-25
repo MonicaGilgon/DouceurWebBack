@@ -58,11 +58,14 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         required=False
     )
     
-    articulos = serializers.PrimaryKeyRelatedField(
+    articulos = ArticuloSerializer(many=True, read_only=True)
+    articulos_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Articulo.objects.filter(estado=True),
-        required=False
+        source="articulos",
+        write_only=True
     )
+
 
     imagen_url = serializers.SerializerMethodField()
     fotos = ProductoBaseFotoSerializer(many=True, read_only=True)

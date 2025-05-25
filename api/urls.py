@@ -34,10 +34,8 @@ urlpatterns=[
     path('listar-articulos/', views.ListarArticulos.as_view(), name='listar-articulos'),
     path('articulos-por-categoria/<int:categoria_id>/', views.ArticulosPorCategoria.as_view(), name='articulos-por-categoria'),
     path('editar-articulo/<int:articulo_id>/', views.EditarArticulo.as_view(), name='editar-articulo'),
-    #path('articulo/<int:id>/', views.ArticuloDetailView.as_view(), name='articulo-detail'),
+    path('cambiar_estado_articulo/<int:articulo_id>/', views.CambiarEstadoArticulo.as_view(), name='cambiar-estado-articulo'),
     
-
-
     #URL categorias producto base
     path('crear-categoria-producto-base/', views.CrearCategoriaProductoBase.as_view(), name='crear-categoria-producto-base'),
     path('listar-categoria-producto-base/', views.ListarCategoriaProductoBase.as_view(), name='listar-categoria-producto-base'),
@@ -47,7 +45,7 @@ urlpatterns=[
     #URL productos base
     path('crear-producto-base/', views.CrearProductoBase.as_view(), name='crear-producto-base'),
     path('listar-producto-base/', views.ListarProductoBase.as_view(), name='listar-producto-base'),
-    #path('cambiar_estado_producto/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar_estado_producto'),    
+    path('cambiar_estado_producto/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar-estado-producto-base'),
     path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
     path('productos-por-categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos-por-categoria'),
     path('foto-producto/<int:foto_id>/', views.EliminarFotoProducto.as_view()),
@@ -80,6 +78,9 @@ urlpatterns=[
     path('actualizar-estado-pedido/<int:order_id>/', UpdateOrderStatusView.as_view(), name='actualizar-estado-pedido'),
     # Endpoint para refrescar tokens
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+
+    #Catalogo-clientes
+    path('catalogo-productos/', views.CatalogoProductoBase.as_view(), name='catalogo-productos'),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
