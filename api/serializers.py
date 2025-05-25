@@ -58,7 +58,12 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         required=False
     )
     
-    articulos = ArticuloSerializer(many=True, read_only=True)
+    articulos = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=Articulo.objects.filter(estado=True),
+        required=False
+    )
+
     imagen_url = serializers.SerializerMethodField()
     fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
 
@@ -71,10 +76,7 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
             return obj.imagen.url
         return None
 
-
-    # Sobrescribimos el método create para permitir la creación de fotos junto con el producto base
     def create(self, validated_data):
-    # Extraer la imagen manualmente
         imagen = validated_data.pop('imagen', None)
         fotos_data = self.context['request'].FILES.getlist('fotos')
 
@@ -84,6 +86,22 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
             ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
 
         return producto_base
+    
+    def update(self, instance, validated_data):
+        articulos = validated_data.pop('articulos', None)
+        categorias_articulo = validated_data.pop('categorias_articulo', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        if articulos is not None:
+            instance.articulos.set(articulos)
+
+        if categorias_articulo is not None:
+            instance.categorias_articulo.set(categorias_articulo)
+
+        instance.save()
+        return instance
 
 class OrderItemSerializer(serializers.ModelSerializer):
     producto = ProductoBaseSerializer(read_only=True)  # Cambiado de articulo a producto para coincidir con el modelo
