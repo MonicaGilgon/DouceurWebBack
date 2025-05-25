@@ -935,24 +935,26 @@ from .models import ProductoBase, ProductoBaseFoto, CategoriaProductoBase, Artic
 from .serializers import ProductoBaseSerializer
 
 class CrearProductoBase(APIView):
-    parser_classes = [MultiPartParser, FormParser] 
+    parser_classes = [MultiPartParser, FormParser]
+
     def post(self, request):
         try:
             nombre = request.data.get('nombre')
             descripcion = request.data.get('descripcion')
             precio = request.data.get('precio')
             imagen = request.FILES.get('imagen')
-            categoriaProductoBase_id = request.data.get('categoriaProductoBase') 
+            categoriaProductoBase_id = request.data.get('categoriaProductoBase')
             articulos_ids = request.data.get('articulos', '[]')
-            imagenes = request.FILES.getlist('fotos') 
+            imagenes = request.FILES.getlist('fotos')
+            categorias_ids = request.data.get('categorias_articulo', '[]')
 
-             # Validaciones nombre
+            # Validar nombre
             if not nombre:
                 return JsonResponse({"error": "El nombre no puede estar vacío."}, status=400)
             if ProductoBase.objects.filter(nombre=nombre).exists():
                 return JsonResponse({"error": "Ya existe un producto con ese nombre."}, status=400)
 
-            # Validaciones descripción y precio
+            # Validar descripción y precio
             if not descripcion:
                 return JsonResponse({"error": "La descripción es obligatoria."}, status=400)
             try:
@@ -962,52 +964,72 @@ class CrearProductoBase(APIView):
             except:
                 return JsonResponse({"error": "Precio inválido."}, status=400)
 
-            # Validar y parsear IDs de artículos
-            articulos_ids = json.loads(articulos_ids) if isinstance(articulos_ids, str) else articulos_ids
+            # Validar y parsear artículos
+            try:
+                articulos_ids = json.loads(articulos_ids) if isinstance(articulos_ids, str) else articulos_ids
+            except:
+                return JsonResponse({"error": "Formato inválido para artículos."}, status=400)
+
+            if not isinstance(articulos_ids, list):
+                return JsonResponse({"error": "Los artículos deben ser enviados como lista."}, status=400)
+
             articulos = Articulo.objects.filter(id__in=articulos_ids)
             if len(articulos) != len(articulos_ids):
                 return JsonResponse({"error": "Uno o más artículos no existen."}, status=400)
 
-            # Verificar que las claves foráneas existen
+            # Validar ID de categoría
+            try:
+                categoriaProductoBase_id = int(categoriaProductoBase_id)
+            except (TypeError, ValueError):
+                return JsonResponse({"error": "ID de categoría inválido."}, status=400)
+
             try:
                 categoriaProductoBase = CategoriaProductoBase.objects.get(id=categoriaProductoBase_id)
             except CategoriaProductoBase.DoesNotExist:
                 return JsonResponse({"error": "La categoría proporcionada no existe."}, status=400)
-            
+
+            # Validar imágenes secundarias
             for img in imagenes:
                 if not img.name.lower().endswith(('.jpg', '.jpeg', '.png')):
                     return JsonResponse({"error": f"La imagen '{img.name}' no es JPG o PNG."}, status=400)
                 if img.size > 5 * 1024 * 1024:
                     return JsonResponse({"error": f"La imagen '{img.name}' supera los 5MB."}, status=400)
-            
-            # Crear el producto base
+
+            # Crear producto base
             nuevo_producto_base = ProductoBase(
                 nombre=nombre,
                 descripcion=descripcion,
                 precio=precio,
                 estado=True,
                 categoriaProductoBase=categoriaProductoBase,
-                imagen=imagen  # ✅ Aquí está la solución
+                imagen=imagen
             )
             nuevo_producto_base.save()
-            
+
             # Asociar categorías de artículo
-            categorias_ids = request.data.get('categorias_articulo', '[]')
-            categorias_ids = json.loads(categorias_ids) if isinstance(categorias_ids, str) else categorias_ids
+            try:
+                categorias_ids = json.loads(categorias_ids) if isinstance(categorias_ids, str) else categorias_ids
+            except:
+                return JsonResponse({"error": "Formato inválido para categorías de artículo."}, status=400)
+
+            if not isinstance(categorias_ids, list):
+                return JsonResponse({"error": "Las categorías deben ser enviadas como lista."}, status=400)
+
             categorias = CategoriaArticulo.objects.filter(id__in=categorias_ids)
             if len(categorias) != len(categorias_ids):
                 return JsonResponse({"error": "Una o más categorías de artículo no existen."}, status=400)
-            nuevo_producto_base.categorias_articulo.set(categorias)
 
-            # Asociar artículos
+            nuevo_producto_base.categorias_articulo.set(categorias)
             nuevo_producto_base.articulos.set(articulos)
-            
-            # Guardar imágenes
+
             for img in imagenes:
                 ProductoBaseFoto.objects.create(productoBase=nuevo_producto_base, foto=img)
 
-            return JsonResponse({"success": f"Producto '{nuevo_producto_base.nombre}' creado correctamente."}, status=201)
+            return JsonResponse(ProductoBaseSerializer(nuevo_producto_base).data, status=201)
+
         except Exception as e:
+            import traceback
+            traceback.print_exc()
             return JsonResponse({"error": f"Error al crear el producto base: {str(e)}"}, status=500)
 
 def product_detail(request, id):
@@ -1050,7 +1072,7 @@ def products_list_views(request):
 
 
 class EditarProductoBase(APIView):
-    parser_classes = [MultiPartParser, FormParser]  # ✅ Habilita archivos
+    parser_classes = [MultiPartParser, FormParser] 
 
     def get(self, request, producto_id):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
@@ -1076,58 +1098,51 @@ class EditarProductoBase(APIView):
         producto_base = get_object_or_404(ProductoBase, id=producto_id)
 
         try:
-            nombre = request.data.get("nombre")
-            descripcion = request.data.get("descripcion")
-            precio = request.data.get("precio")
-            estado_raw = request.data.get("estado", "true")
-            estado = estado_raw.lower() == "true" if isinstance(estado_raw, str) else bool(estado_raw)
+            request_data = request.data.copy()
 
-            categoria_id = request.data.get("categoriaProductoBase")
-            articulos_raw = request.data.get("articulos", "[]")
-            imagen = request.FILES.get("imagen")  # ✅ Aquí tomamos la imagen correctamente
+            # Convertir string JSON a listas reales
+            for campo in ['articulos', 'categorias_articulo']:
+                valor = request_data.get(campo)
+                if isinstance(valor, str):
+                    try:
+                        request_data[campo] = json.loads(valor)
+                    except json.JSONDecodeError:
+                        request_data[campo] = []
 
-            # Parsear artículos
-            articulos = json.loads(articulos_raw) if isinstance(articulos_raw, str) else articulos_raw
-
+            # Validar nombre duplicado
+            nombre = request_data.get("nombre")
             if not nombre:
                 return JsonResponse({"error": "El nombre no puede estar vacío."}, status=400)
-
             if ProductoBase.objects.filter(nombre=nombre).exclude(id=producto_base.id).exists():
                 return JsonResponse({"error": "Ya existe un producto con ese nombre."}, status=400)
 
-            categoria = get_object_or_404(CategoriaProductoBase, id=categoria_id)
+            # Validar categorías de artículo
+            cat_ids = request_data.getlist('categorias_articulo')  # ← SIEMPRE regresa lista desde FormData
+            cat_ids = [int(i) for i in cat_ids if i]  # cast seguro a enteros, filtrando vacíos
 
-            producto_base.nombre = nombre
-            producto_base.descripcion = descripcion
-            producto_base.precio = precio
-            producto_base.estado = estado
-            producto_base.categoriaProductoBase = categoria
-            producto_base.articulos.set(articulos)
-
-            if imagen:
-                producto_base.imagen = imagen
-
-            producto_base.save()
-            
-            # Actualizar categorías de artículo
-            categorias_ids = request.data.get('categorias_articulo', '[]')
-            categorias_ids = json.loads(categorias_ids) if isinstance(categorias_ids, str) else categorias_ids
-            categorias = CategoriaArticulo.objects.filter(id__in=categorias_ids)
-            if len(categorias) != len(categorias_ids):
+            if CategoriaArticulo.objects.filter(id__in=cat_ids).count() != len(cat_ids):
                 return JsonResponse({"error": "Una o más categorías de artículo no existen."}, status=400)
-            producto_base.categorias_articulo.set(categorias)             
-            
+
+            # Usar serializer
+            print("💡 Intentando actualizar producto", producto_id)
+            serializer = ProductoBaseSerializer(producto_base, data=request_data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                print("❌ Errores del serializer:")
+                print(serializer.errors)
+                return JsonResponse(serializer.errors, status=400)
+
+
+            # Guardar fotos nuevas
             fotos_nuevas = request.FILES.getlist("fotos")
             for foto in fotos_nuevas:
-                ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
+                if foto and foto.size > 0:
+                    ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
 
-            serializer = ProductoBaseSerializer(producto_base)
-            return JsonResponse(serializer.data, safe=False, status=200)
 
-        except CategoriaProductoBase.DoesNotExist:
-            return JsonResponse({'error': 'La categoría especificada no existe.'}, status=400)
-        except IntegrityError as e:
-            return JsonResponse({'error': str(e)}, status=400)
+            return JsonResponse(ProductoBaseSerializer(producto_base).data, safe=False)
+
         except Exception as e:
             import traceback
             traceback.print_exc()

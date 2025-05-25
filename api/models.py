@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import AbstractUser
+from cloudinary_storage.storage import MediaCloudinaryStorage
 
 class Rol(models.Model):
     nombre = models.CharField(max_length=100)
@@ -88,7 +89,7 @@ class ProductoBase(models.Model):
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField()
     precio = models.FloatField()
-    imagen = models.ImageField(upload_to='productos_fotos', null=True, blank=True)  
+    imagen = models.ImageField(storage=MediaCloudinaryStorage(), null=True, blank=True)
     estado = models.BooleanField(default=True)
     categoriaProductoBase = models.ForeignKey(CategoriaProductoBase, on_delete=models.CASCADE)
     articulos = models.ManyToManyField('Articulo', blank=True)
@@ -99,8 +100,7 @@ class ProductoBase(models.Model):
     
 class ProductoBaseFoto(models.Model):
     productoBase = models.ForeignKey(ProductoBase, on_delete=models.CASCADE, related_name='fotos')
-    foto = models.ImageField(upload_to='productos_fotos')
-    
+    foto = models.ImageField(storage=MediaCloudinaryStorage())
     def __str__(self):
         return f"Foto de {self.productoBase.nombre}"
 

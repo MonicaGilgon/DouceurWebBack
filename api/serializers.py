@@ -46,10 +46,12 @@ class ProductoBaseFotoSerializer(serializers.ModelSerializer):
 
 class ProductoBaseSerializer(serializers.ModelSerializer):
     categoriaProductoBase = CategoriaProductoBaseSerializer(read_only=True)
+    
+    # ✅ Este campo es el que se espera en el FormData como "categoriaProductoBase_id"
     categoriaProductoBase_id = serializers.PrimaryKeyRelatedField(
         queryset=CategoriaProductoBase.objects.filter(estado=True),
         source='categoriaProductoBase',
-        write_only=True
+        write_only=True  # <- solo se usa para entrada
     )
 
     categorias_articulo = serializers.PrimaryKeyRelatedField(
@@ -65,7 +67,6 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         source="articulos",
         write_only=True
     )
-
 
     imagen_url = serializers.SerializerMethodField()
     fotos = ProductoBaseFotoSerializer(many=True, read_only=True)
@@ -89,21 +90,31 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
             ProductoBaseFoto.objects.create(productoBase=producto_base, foto=foto)
 
         return producto_base
-    
+
     def update(self, instance, validated_data):
+        request = self.context.get('request')
+        imagen = validated_data.pop('imagen', None)
         articulos = validated_data.pop('articulos', None)
         categorias_articulo = validated_data.pop('categorias_articulo', None)
+        fotos_data = request.FILES.getlist('fotos') if request else []
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
 
+        if imagen:
+            instance.imagen = imagen
+
         if articulos is not None:
-            instance.articulos.set(articulos)
+            instance.articulos.set(articulos if isinstance(articulos, (list, tuple)) else [articulos])
 
         if categorias_articulo is not None:
-            instance.categorias_articulo.set(categorias_articulo)
+            instance.categorias_articulo.set(categorias_articulo if isinstance(categorias_articulo, (list, tuple)) else [categorias_articulo])
 
         instance.save()
+
+        for foto in fotos_data:
+            ProductoBaseFoto.objects.create(productoBase=instance, foto=foto)
+
         return instance
 
 class OrderItemSerializer(serializers.ModelSerializer):
