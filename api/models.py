@@ -118,7 +118,7 @@ class OrderItem(models.Model):
         return self.cantidad * self.precio_unitario  
      
 class ShippingInfo(models.Model):
-    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_details')
+    order = models.OneToOneField(Order, on_delete=models.CASCADE, related_name='shipping_info')
     nombre_receptor = models.CharField(max_length=150)
     direccion_entrega = models.CharField(max_length=255)
     telefono_contacto = models.CharField(max_length=15)

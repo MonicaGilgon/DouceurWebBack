@@ -150,11 +150,12 @@ class ShippingInfoSerializer(serializers.ModelSerializer):
                   'correo_electronico', 'horario_entrega']
 
 class OrderSerializer(serializers.ModelSerializer):
-    shipping_details = ShippingInfoSerializer()  # Incluir datos de envío
+    shipping_info = ShippingInfoSerializer()  # Incluir datos de envío
 
     class Meta:
         model = Order
-        fields = ['id', 'user', 'order_date', 'total_amount', 'status', 'payment_proof', 'items', 'shipping_details']
+        fields = ['id', 'user', 'order_date', 'total_amount', 'status', 'payment_proof', 'items', 'shipping_info']
+
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(source='rol.nombre')
     #orders = OrderSerializer(many=True, read_only=True)

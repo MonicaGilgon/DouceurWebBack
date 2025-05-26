@@ -1314,10 +1314,11 @@ class OrderListView(APIView):
     def patch(self, request, order_id):
         if request.user.rol.nombre not in ['vendedor', 'admin']:
             return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
+        
     def get(self, request):
         status_filter = request.query_params.get('status')
         
-        orders = Order.objects.all().select_related('user', 'shipping_details')
+        orders = Order.objects.all().select_related('user', 'shipping_info')
         
         if status_filter:
             orders = orders.filter(status=status_filter)
