@@ -151,6 +151,7 @@ class ShippingInfoSerializer(serializers.ModelSerializer):
 
 class OrderSerializer(serializers.ModelSerializer):
     shipping_info = ShippingInfoSerializer()  # Incluir datos de envío
+    items = OrderItemSerializer(many=True, read_only=True)  # Incluir ítems del pedido
 
     class Meta:
         model = Order
@@ -158,11 +159,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
 class UsuarioSerializer(serializers.ModelSerializer):
     rol = serializers.CharField(source='rol.nombre')
-    #orders = OrderSerializer(many=True, read_only=True)
+    orders = OrderSerializer(many=True, read_only=True, source='order_set')
 
     class Meta:
         model = Usuario
-        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']#, 'orders']
+        fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol','orders']#,'orders']
 
 class OrderResponseSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
