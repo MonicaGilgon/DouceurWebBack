@@ -1498,3 +1498,13 @@ class VerifyPaymentView(APIView):
             return Response({"message": f"Pedido {order_id} {action}ado exitosamente", "status": order.status}, status=status.HTTP_200_OK)
         except Order.DoesNotExist:
             return Response({"error": "Pedido no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        
+
+class DetalleProductoBase(APIView):
+    def get(self, request, producto_id):
+        try:
+            producto = ProductoBase.objects.get(id=producto_id)
+            serializer = ProductoBaseSerializer(producto)
+            return Response(serializer.data)
+        except ProductoBase.DoesNotExist:
+            return Response({"error": "Producto no encontrado"}, status=status.HTTP_404_NOT_FOUND)

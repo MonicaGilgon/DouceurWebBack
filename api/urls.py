@@ -82,6 +82,7 @@ urlpatterns=[
 
     #Catalogo-clientes
     path('catalogo-productos/', views.CatalogoProductoBase.as_view(), name='catalogo-productos'),
+    path('producto/<int:producto_id>/', views.DetalleProductoBase.as_view(), name='detalle-producto'),
 
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
