@@ -53,10 +53,12 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
-    categorias_articulo = serializers.PrimaryKeyRelatedField(
+    categorias_articulo = CategoriaArticuloSerializer(many=True, read_only=True)
+    categorias_articulo_ids = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=CategoriaArticulo.objects.filter(estado=True),
-        required=False
+        source="categorias_articulo",
+        write_only=True
     )
     
     articulos = ArticuloSerializer(many=True, read_only=True)
