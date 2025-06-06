@@ -58,7 +58,10 @@ MIDDLEWARE = [
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = False
-
+CORS_ORIGIN_WHITELIST = [
+    "https://douceur-nl.vercel.app/", 
+    "http://localhost:3000"  
+]
 
 
 
