@@ -133,6 +133,15 @@ class ProductoBaseSerializer(serializers.ModelSerializer):
 
         return instance
 
+class OrderItemSerializerLite(serializers.ModelSerializer):
+    """Serializer simplificado para items de pedido sin cargar todas las relaciones"""
+    producto_nombre = serializers.CharField(source='producto.nombre', read_only=True)
+    producto_id = serializers.CharField(source='producto.id', read_only=True)
+
+    class Meta:
+        model = OrderItem
+        fields = ['id', 'producto_id', 'producto_nombre', 'cantidad', 'precio_unitario', 'subtotal']
+
 class OrderItemSerializer(serializers.ModelSerializer):
     producto = ProductoBaseSerializer(read_only=True)  # Cambiado de articulo a producto para coincidir con el modelo
 
@@ -167,14 +176,37 @@ class UsuarioSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id','nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol','orders']#,'orders']
 
+
+class UsuarioLiteSerializer(serializers.ModelSerializer):
+    """Serializer ligero para embebidos de usuario dentro de respuestas de pedido
+    Evita cargar la lista completa de pedidos del usuario (causa payload enorme).
+    """
+    rol = serializers.CharField(source='rol.nombre', read_only=True)
+
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']
+
 class OrderResponseSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     shipping_info = ShippingInfoSerializer(read_only=True)
-    user = UsuarioSerializer(read_only=True)
+    # usar serializer ligero para evitar serializar todos los pedidos del usuario
+    user = UsuarioLiteSerializer(read_only=True)
     
     class Meta:
         model = Order
         fields = ['id', 'order_date', 'total_amount', 'status', 'items', 'shipping_info', 'user']
+
+class OrderResponseSerializerLite(serializers.ModelSerializer):
+    """Serializer optimizado para listar pedidos sin cargar todas las relaciones complejas"""
+    items = OrderItemSerializerLite(many=True, read_only=True)
+    usuario_nombre = serializers.CharField(source='user.nombre_completo', read_only=True)
+    usuario_correo = serializers.CharField(source='user.correo', read_only=True)
+    direccion_entrega = serializers.CharField(source='shipping_info.direccion_entrega', read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = ['id', 'order_date', 'total_amount', 'status', 'usuario_nombre', 'usuario_correo', 'direccion_entrega', 'items']
 
 class CreateOrderSerializer(serializers.Serializer):
     items = CreateOrderItemSerializer(many=True)
@@ -237,11 +269,4 @@ class VendedorSerializer(serializers.ModelSerializer):
     class Meta:
         model = Usuario
         fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
-
-
-#class 
-# Serializer(serializers.ModelSerializer):
- #   class Meta:
-  #      model = ArticulosProductoBase
-   #     fields = '__all__'
 

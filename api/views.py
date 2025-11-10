@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (CreateOrderSerializer, OrderResponseSerializer, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
+from .serializers import (CreateOrderSerializer, OrderResponseSerializer, OrderResponseSerializerLite, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -1065,7 +1065,7 @@ def products_list_views(request):
     productoBase = ProductoBase.objects.all()
 
     context = {
-        "products": products, 
+        "products": productoBase, 
     }
     #return render(request, '/index.html', context)
 
@@ -1316,15 +1316,38 @@ class OrderListView(APIView):
             return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
         
     def get(self, request):
+        # Obtener parámetros de paginación
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 10))
         status_filter = request.query_params.get('status')
         
-        orders = Order.objects.all().select_related('user', 'shipping_info')
+        # Optimizar consultas con select_related y prefetch_related
+        orders = Order.objects.select_related(
+            'user', 
+            'shipping_info'
+        ).prefetch_related(
+            'items',
+            'items__producto'
+        ).order_by('-order_date')
         
         if status_filter:
             orders = orders.filter(status=status_filter)
+        
+        # Implementar paginación manual
+        start = (page - 1) * page_size
+        end = page * page_size
+        total_orders = orders.count()
+        orders_page = orders[start:end]
             
-        serializer = OrderResponseSerializer(orders, many=True)
-        return Response(serializer.data)
+        # Usar serializer optimizado para listado
+        serializer = OrderResponseSerializerLite(orders_page, many=True)
+        
+        return Response({
+            'results': serializer.data,
+            'total': total_orders,
+            'pages': (total_orders + page_size - 1) // page_size,
+            'current_page': page
+        })
 
 class OrderDetailView(APIView):
     def patch(self, request, order_id):
@@ -1333,7 +1356,15 @@ class OrderDetailView(APIView):
     
     def get(self, request, order_id):
         try:
-            order = Order.objects.get(id=order_id)
+            # Optimizar queries con select_related y prefetch_related
+            order = Order.objects.select_related(
+                'user',
+                'shipping_info'
+            ).prefetch_related(
+                'items',
+                'items__producto'
+            ).get(id=order_id)
+            
             serializer = OrderResponseSerializer(order)
             return Response(serializer.data)
         except Order.DoesNotExist:
@@ -1350,7 +1381,15 @@ class UpdateOrderStatusView(APIView):
             return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            order = Order.objects.get(id=order_id)
+            # Optimizar queries con select_related y prefetch_related
+            order = Order.objects.select_related(
+                'user',
+                'shipping_info'
+            ).prefetch_related(
+                'items',
+                'items__producto'
+            ).get(id=order_id)
+            
             new_status = request.data.get('status')
             current_status = order.status
 
@@ -1380,7 +1419,15 @@ class ClientOrderDetailView(APIView):
             return Response({"error": "No tienes permisos"}, status=status.HTTP_403_FORBIDDEN)
 
         try:
-            order = Order.objects.get(id=order_id, user=request.user)
+            # Optimizar queries con select_related y prefetch_related
+            order = Order.objects.select_related(
+                'user',
+                'shipping_info'
+            ).prefetch_related(
+                'items',
+                'items__producto'
+            ).get(id=order_id, user=request.user)
+            
             serializer = OrderResponseSerializer(order)
             return Response(serializer.data)
         except Order.DoesNotExist:
