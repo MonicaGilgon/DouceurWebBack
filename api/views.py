@@ -303,7 +303,7 @@ class RecoverPasswordView(APIView):
                 <div class="footer">
                     <p>¿TIENES PREGUNTAS? <a href="mailto:info@douceur.com">CONTÁCTANOS</a></p>
                     <div class="footer-links">
-                        <a href="#">REGÍSTRATE</a> | <a href="#">BLOG</a> | <a href="#">SOBRE NOSOTROS</a>
+                        <a href="https://douceur-nl.vercel.app/sign-up">REGÍSTRATE</a> | <a href="#">BLOG</a> | <a href="#">SOBRE NOSOTROS</a>
                     </div>
                 </div>
             </div>
