@@ -153,7 +153,7 @@ class RecoverPasswordView(APIView):
         uid = urlsafe_base64_encode(force_bytes(user.pk))
 
         # Crear el enlace de restablecimiento
-        reset_link = f"http://localhost:3000/reset-password?token={token}&uid={uid}"
+        reset_link = f"https://douceur-nl.vercel.app//reset-password?token={token}&uid={uid}"
 
         # Asunto del correo
         subject = "Restablecer contraseña - Douceur"
