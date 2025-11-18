@@ -656,6 +656,45 @@ class ListarCategoriaArticulo(APIView):
         return Response(serializer.errors, status=400) 
 
 
+# Endpoint para listar categorías con artículos agrupados
+class ListarCategoriasConArticulos(APIView):
+    """
+    Endpoint que lista todas las categorías de artículos con sus artículos asociados.
+    Retorna un diccionario donde la clave es el ID de la categoría y el valor 
+    es una lista de nombres de artículos.
+    
+    Ejemplo:
+    {
+        "1": ["Producto A", "Producto B"],
+        "2": ["Producto C"],
+        "3": []
+    }
+    """
+    def get(self, request):
+        try:
+            # Obtener todas las categorías
+            categorias = CategoriaArticulo.objects.all()
+            
+            # Construir diccionario con categorías y sus artículos
+            resultado = {}
+            for categoria in categorias:
+                # Obtener artículos de la categoría
+                articulos = Articulo.objects.filter(
+                    categoriaArticulo=categoria,
+                    estado=True  # Solo artículos activos
+                ).values_list('nombre', flat=True)
+                
+                # Agregar al resultado
+                resultado[str(categoria.id)] = list(articulos)
+            
+            return Response(resultado, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
 #Cambiar estado categoria articulo
 class CambiarEstadoCategoriaArticulo(APIView):
     def patch(self, request, categoria_articulo_id):
@@ -767,6 +806,44 @@ class ProductosPorCategoria(APIView):
         productosBase = ProductoBase.objects.filter(categoriaProductoBase=categoria_id)
         serializer = ProductoBaseSerializer(productosBase, many=True)
         return Response(serializer.data)
+
+
+# Endpoint para listar todas las categorías de productos con sus productos
+class ProductosPorTodasLasCategorias(APIView):
+    """
+    Endpoint que lista todas las categorías de productos base con sus productos asociados.
+    Retorna un diccionario donde la clave es el ID de la categoría y el valor 
+    es una lista de objetos producto con id, nombre y estado.
+    
+    Ejemplo:
+    {
+        "1": [],
+        "2": [{"id": 1, "nombre": "Producto A", "estado": true}],
+        "3": [{"id": 2, "nombre": "Producto B", "estado": false}]
+    }
+    """
+    def get(self, request):
+        try:
+            # Obtener todas las categorías de productos base
+            categorias = CategoriaProductoBase.objects.all()
+            
+            # Construir diccionario con categorías y sus productos
+            resultado = {}
+            for categoria in categorias:
+                # Obtener productos de la categoría
+                productos = ProductoBase.objects.filter(
+                    categoriaProductoBase=categoria
+                ).values('id', 'nombre', 'estado')
+                
+                # Agregar al resultado como lista de diccionarios
+                resultado[str(categoria.id)] = list(productos)
+            
+            return Response(resultado, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 
 #Editar categoria producto base

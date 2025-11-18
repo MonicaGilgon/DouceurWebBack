@@ -25,6 +25,7 @@ urlpatterns=[
     #URL categoría-artículo
     path('crear-categoria-articulo/', views.CrearCategoriaArticulo.as_view(), name='crear-categoria-articulo'),
     path('listar-categoria-articulo/', views.ListarCategoriaArticulo.as_view(), name='listar-categoria-articulo'),
+    path('listar-categorias-con-articulos/', views.ListarCategoriasConArticulos.as_view(), name='listar-categorias-con-articulos'),
     path('cambiar-estado-categoria-articulo/<int:categoria_articulo_id>/', views.CambiarEstadoCategoriaArticulo.as_view(), name='cambiar-estado-categoria-articulo'),
     path('editar-categoria-articulo/<int:categoria_articulo_id>/', views.EditarCategoriaArticulo.as_view(), name='editar-categoria-articulo'),
     #path('articulos/cambio_estado/<int:articulo_id>/', views.ToggleArticuloEstadoAPIView.as_view(), name='toggle-articulo-estado'),
@@ -48,6 +49,7 @@ urlpatterns=[
     path('cambiar_estado_producto/<int:producto_id>/', views.CambiarEstadoProductoBase.as_view(), name='cambiar-estado-producto-base'),
     path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
     path('productos-por-categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos-por-categoria'),
+    path('productos-por-todas-las-categorias/', views.ProductosPorTodasLasCategorias.as_view(), name='productos-por-todas-las-categorias'),
     path('foto-producto/<int:foto_id>/', views.EliminarFotoProducto.as_view()),
     path("eliminar-producto-base/<int:producto_id>/", views.EliminarProductoBase.as_view()),
     
