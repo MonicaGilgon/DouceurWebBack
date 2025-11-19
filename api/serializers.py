@@ -310,7 +310,7 @@ class ProductoPorCategoriaSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductoBase
-        fields = ['nombre', 'descripcion', 'precio', 'imagen_url', 'categoria', 'categoria_estado']
+        fields = ['nombre', 'descripcion', 'precio', 'imagen_url', 'categoria', 'categoria_estado', 'id']
 
 class CatalogoProductoSerializer(serializers.ModelSerializer):
     """
