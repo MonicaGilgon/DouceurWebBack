@@ -1808,3 +1808,75 @@ class ActualizarEstadoProductosPorCategoria(APIView):
             return Response({"message": f"Se {accion} {num_actualizados} productos de la categoría {categoria_id}."}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({"error": f"Ocurrió un error al actualizar los productos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class BuscarProductosAPIView(APIView):
+    permission_classes = []  # Público
+
+    def get(self, request):
+        start_time = time.time()
+        search = request.GET.get('search', '').strip()
+        page = request.GET.get('page', '1')
+        page_size = request.GET.get('page_size', '20')
+        sort = request.GET.get('sort', 'relevance')
+
+        # Validación de parámetros
+        try:
+            page = int(page)
+            page_size = int(page_size)
+            assert page > 0 and page_size > 0 and page_size <= 100
+        except Exception:
+            return Response({'error': 'Parámetros de paginación inválidos.'}, status=400)
+        if sort not in ['relevance', 'price_asc', 'price_desc', 'newest']:
+            return Response({'error': 'Parámetro sort inválido.'}, status=400)
+
+        # Query base
+        qs = ProductoBase.objects.filter(estado=True)
+
+        # Búsqueda por palabras
+        if search:
+            # Intentar full-text (si está disponible)
+            try:
+                from django.contrib.postgres.search import SearchVector, SearchRank, SearchQuery
+                vector = SearchVector('nombre', 'descripcion')
+                query = SearchQuery(search)
+                qs = qs.annotate(rank=SearchRank(vector, query)).filter(rank__gte=0.1).order_by('-rank')
+                score_field = 'rank'
+            except ImportError:
+                # Fallback seguro con ILIKE
+                qs = qs.filter(Q(nombre__icontains=search) | Q(descripcion__icontains=search))
+                score_field = None
+        else:
+            score_field = None
+
+        # Ordenamiento
+        if sort == 'price_asc':
+            qs = qs.order_by('precio')
+        elif sort == 'price_desc':
+            qs = qs.order_by('-precio')
+        elif sort == 'newest':
+            qs = qs.order_by('-id')
+        elif sort == 'relevance' and score_field:
+            qs = qs.order_by('-rank')
+        else:
+            qs = qs.order_by('id')
+
+        # Paginación
+        total = qs.count()
+        total_pages = (total + page_size - 1) // page_size
+        offset = (page - 1) * page_size
+        items = qs[offset:offset+page_size]
+
+        # Serialización
+        serializer = CatalogoProductoSerializer(items, many=True)
+        took_ms = int((time.time() - start_time) * 1000)
+        response = {
+            'meta': {
+                'total': total,
+                'page': page,
+                'page_size': page_size,
+                'total_pages': total_pages,
+                'took_ms': took_ms
+            },
+            'items': serializer.data
+        }
+        return Response(response, status=200)

@@ -321,3 +321,39 @@ class CatalogoProductoSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductoBase
         fields = ['id', 'nombre', 'precio', 'imagen_url']
+
+
+class BuscarProductoSerializer(serializers.ModelSerializer):
+    imagen_url = serializers.SerializerMethodField()
+    categoria_id = serializers.IntegerField(source='categoriaProductoBase.id', read_only=True)
+    categoria_nombre = serializers.CharField(source='categoriaProductoBase.nombre', read_only=True)
+    stock = serializers.SerializerMethodField()
+    slug = serializers.SerializerMethodField()
+    created_at = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductoBase
+        fields = ['id', 'nombre', 'descripcion', 'precio', 'imagen_url', 'categoria_id', 'categoria_nombre', 'stock', 'slug', 'created_at']
+
+    def get_imagen_url(self, obj):
+        if obj.imagen:
+            try:
+                return obj.imagen.url
+            except Exception:
+                return None
+        return None
+
+    def get_stock(self, obj):
+        # No hay campo de stock en el modelo; devolvemos None para indicar no disponible
+        return None
+
+    def get_slug(self, obj):
+        try:
+            from django.utils.text import slugify
+            return slugify(obj.nombre)
+        except Exception:
+            return None
+
+    def get_created_at(self, obj):
+        # El modelo no tiene created_at por defecto; devolver None si no existe
+        return getattr(obj, 'created_at', None)
