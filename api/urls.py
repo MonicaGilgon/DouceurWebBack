@@ -3,7 +3,7 @@ from rest_framework import routers
 from api import views
 from django.conf import settings
 from django.conf.urls.static import static
-from .views import OrderDetailView, OrderListView, ProfileView, ClientOrderDetailView, SalesReportView, UpdateOrderStatusView,VerifyPaymentView
+from .views import OrderDetailView, OrderListView, ProfileView, ClientOrderDetailView, SalesReportView, UpdateOrderStatusView, VerifyPaymentView, UsuarioPerfilView, UsuariosSinPedidosView, PedidosUsuarioLiteView, UsuarioInfoView, ActualizarEstadoProductosPorCategoria
 from rest_framework_simplejwt.views import TokenRefreshView
 
 app_name = "api"
@@ -17,6 +17,10 @@ urlpatterns=[
     path("sign-up/", views.CrearCliente.as_view(), name="sign-up"),
     path("sign-in/", views.LoginView.as_view(), name="sign-in"),
     path('profile/', ProfileView.as_view(), name='profile'),
+    path('usuario-perfil/', UsuarioPerfilView.as_view(), name='usuario-perfil'),
+    path('usuarios-sin-pedidos/', UsuariosSinPedidosView.as_view(), name='usuarios-sin-pedidos'),
+    path('pedidos-usuario/', PedidosUsuarioLiteView.as_view(), name='pedidos-usuario'),
+    path('usuario-info/', UsuarioInfoView.as_view(), name='usuario-info'),
 
     # URLS recuperación de contraseña
     path("recover-password/", views.RecoverPasswordView.as_view(), name="recover-password"),
@@ -52,6 +56,7 @@ urlpatterns=[
     path('productos-por-todas-las-categorias/', views.ProductosPorTodasLasCategorias.as_view(), name='productos-por-todas-las-categorias'),
     path('foto-producto/<int:foto_id>/', views.EliminarFotoProducto.as_view()),
     path("eliminar-producto-base/<int:producto_id>/", views.EliminarProductoBase.as_view()),
+    path('actualizar-estado-productos-por-categoria/<int:categoria_id>/', ActualizarEstadoProductosPorCategoria.as_view(), name='actualizar-estado-productos-por-categoria'),
     
     #URL clientes
     path('listar-clientes/', views.ListarClientes.as_view(), name='listar-clientes'),
@@ -63,7 +68,7 @@ urlpatterns=[
     path('cambiar-estado-vendedor/<int:vendedor_id>/', views.CambiarEstadoVendedor.as_view(), name='cambiar-estado-vendedor'),
     path('editar-vendedor/<int:vendedor_id>/', views.EditarVendedor.as_view(), name='editar-vendedor'),
     
-    
+
 
 
     #CART

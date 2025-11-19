@@ -187,6 +187,16 @@ class UsuarioLiteSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol']
 
+
+class UsuarioConPedidosSerializer(serializers.ModelSerializer):
+    """Serializer completo para usuario con todos sus pedidos"""
+    rol = serializers.CharField(source='rol.nombre', read_only=True)
+    orders = OrderSerializer(many=True, read_only=True, source='order_set')
+
+    class Meta:
+        model = Usuario
+        fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'orders', 'estado']
+
 class OrderResponseSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True, read_only=True)
     shipping_info = ShippingInfoSerializer(read_only=True)
@@ -208,7 +218,27 @@ class OrderResponseSerializerLite(serializers.ModelSerializer):
         model = Order
         fields = ['id', 'order_date', 'total_amount', 'status', 'usuario_nombre', 'usuario_correo', 'direccion_entrega', 'items']
 
-class CreateOrderSerializer(serializers.Serializer):
+
+class OrderPedidosUsuarioSerializer(serializers.ModelSerializer):
+    """Serializer muy ligero para listar pedidos del usuario en su vista personal
+    Solo retorna: fecha, nombre del producto, monto total y estado
+    Ideal para la vista "Tus Pedidos"
+    """
+    producto_nombre = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Order
+        fields = ['id', 'order_date', 'producto_nombre', 'total_amount', 'status']
+    
+    def get_producto_nombre(self, obj):
+        """Obtiene el nombre del primer producto en el pedido (si tiene items)"""
+        items = obj.items.all()
+        if items.exists():
+            return items.first().producto.nombre
+        return "N/A"
+
+
+class VendedorSerializer(serializers.ModelSerializer):
     items = CreateOrderItemSerializer(many=True)
     nombre_receptor = serializers.CharField(max_length=150)
     direccion_entrega = serializers.CharField(max_length=255)
@@ -270,3 +300,24 @@ class VendedorSerializer(serializers.ModelSerializer):
         model = Usuario
         fields = ['id', 'nombre_completo', 'correo', 'telefono', 'direccion', 'document_number', 'rol', 'estado']
 
+class ProductoPorCategoriaSerializer(serializers.ModelSerializer):
+    """
+    Serializer optimizado para listar productos por categoría, devolviendo solo campos esenciales.
+    """
+    imagen_url = serializers.CharField(source='imagen.url', read_only=True)
+    categoria = serializers.CharField(source='categoriaProductoBase.nombre', read_only=True)
+    categoria_estado = serializers.BooleanField(source='categoriaProductoBase.estado', read_only=True)
+
+    class Meta:
+        model = ProductoBase
+        fields = ['nombre', 'descripcion', 'precio', 'imagen_url', 'categoria', 'categoria_estado']
+
+class CatalogoProductoSerializer(serializers.ModelSerializer):
+    """
+    Serializer optimizado para el catálogo de productos, devolviendo solo los campos esenciales.
+    """
+    imagen_url = serializers.CharField(source='imagen.url', read_only=True)
+
+    class Meta:
+        model = ProductoBase
+        fields = ['id', 'nombre', 'precio', 'imagen_url']

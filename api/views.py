@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (CreateOrderSerializer, OrderResponseSerializer, OrderResponseSerializerLite, RolSerializer, UsuarioSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer)
+from .serializers import (CreateOrderItemSerializer, OrderResponseSerializer, OrderResponseSerializerLite, OrderPedidosUsuarioSerializer, RolSerializer, UsuarioSerializer, UsuarioLiteSerializer, UsuarioConPedidosSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer, ProductoPorCategoriaSerializer, CatalogoProductoSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -18,7 +18,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.conf import settings
 import re
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from django.core.validators import EmailValidator
@@ -455,6 +455,150 @@ class ProfileView(APIView):
         return Response({"message": "Contraseña actualizada correctamente."}, status=200)
 
 
+# Endpoint para obtener perfil del usuario autenticado con sus pedidos
+class UsuarioPerfilView(APIView):
+    """
+    Endpoint que retorna la información completa del usuario autenticado con todos sus pedidos.
+    Optimizado con select_related y prefetch_related para evitar N+1 queries.
+    Ideal para la vista de usuario personal.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            from django.db.models import Prefetch
+            
+            # Obtener usuario con pedidos optimizados
+            user = Usuario.objects.select_related(
+                'rol'
+            ).prefetch_related(
+                Prefetch(
+                    'order_set',
+                    queryset=Order.objects.select_related(
+                        'shipping_info'
+                    ).prefetch_related(
+                        Prefetch(
+                            'items',
+                            queryset=OrderItem.objects.select_related(
+                                'producto',
+                                'producto__categoriaProductoBase'
+                            ).prefetch_related(
+                                'producto__categorias_articulo',
+                                'producto__articulos',
+                                'producto__articulos__categoriaArticulo',
+                                'producto__fotos'
+                            )
+                        )
+                    ).order_by('-order_date')
+                )
+            ).get(id=request.user.id)
+            
+            serializer = UsuarioConPedidosSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# Endpoint para listar usuarios sin cargar pedidos (para admin)
+class UsuariosSinPedidosView(APIView):
+    """
+    Endpoint que retorna lista de usuarios con rol 'cliente' sin cargar sus pedidos.
+    Optimizado para la vista de administrador que necesita ver información de usuarios sin los pedidos.
+    Mucho más rápido que listar usuarios con pedidos.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Obtener solo usuarios con rol 'cliente' sin cargar pedidos
+            usuarios = Usuario.objects.select_related('rol').filter(rol__nombre='cliente')
+            serializer = UsuarioLiteSerializer(usuarios, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# Endpoint para listar pedidos del usuario con información mínima
+class PedidosUsuarioLiteView(APIView):
+    """
+    Endpoint que retorna solo los pedidos del usuario autenticado con información mínima.
+    Retorna: id, fecha, nombre del producto, monto total y estado.
+    Ideal para la vista "Tus Pedidos" del usuario.
+    OPTIMIZADO: Carga solo datos necesarios sin N+1 queries.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Obtener pedidos del usuario
+            pedidos = Order.objects.filter(
+                user=request.user
+            ).select_related(
+                'items'
+            ).prefetch_related(
+                'items__producto'
+            ).order_by('-order_date').values(
+                'id', 'order_date', 'total_amount', 'status'
+            )
+            
+            pedidos_list = list(pedidos)
+            
+            # Para cada pedido, obtener el nombre del primer producto
+            for pedido in pedidos_list:
+                # Obtener primer item del pedido
+                primer_item = OrderItem.objects.filter(
+                    order_id=pedido['id']
+                ).select_related('producto').first()
+                
+                if primer_item and primer_item.producto:
+                    pedido['producto_nombre'] = primer_item.producto.nombre
+                else:
+                    pedido['producto_nombre'] = 'N/A'
+            
+            return Response(pedidos_list, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+
+# Endpoint para obtener información del usuario autenticado sin pedidos
+class UsuarioInfoView(APIView):
+    """
+    Endpoint que retorna solo la información del usuario autenticado sin cargar pedidos.
+    Funciona para cualquier tipo de usuario (admin, cliente, vendedor, etc).
+    Retorna: id, nombre, correo, teléfono, dirección, documento, rol y estado.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            # Obtener usuario autenticado sin pedidos
+            user = Usuario.objects.select_related('rol').get(id=request.user.id)
+            serializer = UsuarioLiteSerializer(user)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Usuario.DoesNotExist:
+            return Response(
+                {'error': 'Usuario no encontrado'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
  
 #CLIENTE
@@ -803,8 +947,12 @@ class CambiarEstadoCategoriaProductoBase(APIView):
 
 class ProductosPorCategoria(APIView):
     def get(self, request, categoria_id):
-        productosBase = ProductoBase.objects.filter(categoriaProductoBase=categoria_id)
-        serializer = ProductoBaseSerializer(productosBase, many=True)
+        # Optimiza la consulta usando select_related para cargar la categoría en la misma query
+        productosBase = ProductoBase.objects.filter(
+            categoriaProductoBase=categoria_id
+        ).select_related('categoriaProductoBase')
+        # Usa el nuevo serializer optimizado
+        serializer = ProductoPorCategoriaSerializer(productosBase, many=True)
         return Response(serializer.data)
 
 
@@ -889,9 +1037,9 @@ class ProductosPorCategoria(APIView):
 class CatalogoProductoBase(APIView):
     def get(self, request):
         try:
-            productos_visibles = ProductoBase.objects.filter(estado=True)
-            serializer = ProductoBaseSerializer(productos_visibles, many=True)
-            return Response(serializer.data, status=200)
+            productos_visibles = ProductoBase.objects.filter(estado=True).only('id', 'nombre', 'precio', 'imagen')
+            serializer = CatalogoProductoSerializer(productos_visibles, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as e:
             return JsonResponse({"error": f"Error al obtener productos del catálogo: {str(e)}"}, status=500)
 
@@ -1369,7 +1517,7 @@ class CreateOrderView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs):
-        serializer = CreateOrderSerializer(
+        serializer = CreateOrderItemSerializer(
             data=request.data, 
             context={'request': request}
         )
@@ -1632,3 +1780,31 @@ class DetalleProductoBase(APIView):
             return Response(serializer.data)
         except ProductoBase.DoesNotExist:
             return Response({"error": "Producto no encontrado"}, status=status.HTTP_404_NOT_FOUND)
+ 
+ 
+class ActualizarEstadoProductosPorCategoria(APIView):
+    """
+    Endpoint para activar o desactivar todos los productos base de una categoría específica.
+    Acepta un cuerpo PATCH con {"estado": true/false}.
+    """
+    def patch(self, request, categoria_id):
+        nuevo_estado = request.data.get('estado')
+ 
+        if nuevo_estado is None or not isinstance(nuevo_estado, bool):
+            return Response(
+                {"error": "El campo 'estado' es requerido y debe ser un booleano (true/false)."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+ 
+        try:
+            # Verificar si la categoría existe para dar un error 404 claro.
+            if not CategoriaProductoBase.objects.filter(id=categoria_id).exists():
+                return Response({"error": "Categoría no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+ 
+            # Actualizar en masa todos los productos de la categoría. Es más eficiente.
+            num_actualizados = ProductoBase.objects.filter(categoriaProductoBase_id=categoria_id).update(estado=nuevo_estado)
+ 
+            accion = "activaron" if nuevo_estado else "desactivaron"
+            return Response({"message": f"Se {accion} {num_actualizados} productos de la categoría {categoria_id}."}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": f"Ocurrió un error al actualizar los productos: {str(e)}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
