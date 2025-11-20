@@ -54,6 +54,7 @@ urlpatterns=[
     path('editar-producto-base/<int:producto_id>/', views.EditarProductoBase.as_view(), name='editar-producto-base'),
     path('productos-por-categoria/<int:categoria_id>/', views.ProductosPorCategoria.as_view(), name='productos-por-categoria'),
     path('productos-por-todas-las-categorias/', views.ProductosPorTodasLasCategorias.as_view(), name='productos-por-todas-las-categorias'),
+    path('productos/todos/', views.TodosLosProductos.as_view(), name='todos-productos'),
     path('foto-producto/<int:foto_id>/', views.EliminarFotoProducto.as_view()),
     path("eliminar-producto-base/<int:producto_id>/", views.EliminarProductoBase.as_view()),
     path('actualizar-estado-productos-por-categoria/<int:categoria_id>/', ActualizarEstadoProductosPorCategoria.as_view(), name='actualizar-estado-productos-por-categoria'),

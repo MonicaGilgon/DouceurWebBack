@@ -28,6 +28,7 @@ from rest_framework import generics, permissions
 from django.contrib import messages
 from django.template.loader import render_to_string
 from rest_framework.parsers import MultiPartParser, FormParser
+import time
 
 # INDEX
 def index(request):
@@ -926,7 +927,7 @@ class ListarCategoriaProductoBase(APIView):
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=201)  
-        return Response(serializer.errors, status=400) 
+        return Response(serializer.errors, status=400)
 
 
 #Cabiar estado categoria producto base
@@ -1539,7 +1540,7 @@ class OrderListView(APIView):
     def patch(self, request, order_id):
         if request.user.rol.nombre not in ['vendedor', 'admin']:
             return Response({"error": "No tienes permisos para actualizar el estado"}, status=status.HTTP_403_FORBIDDEN)
-        
+    
     def get(self, request):
         # Obtener parámetros de paginación
         page = int(request.query_params.get('page', 1))
@@ -1843,7 +1844,7 @@ class BuscarProductosAPIView(APIView):
                 score_field = 'rank'
             except ImportError:
                 # Fallback seguro con ILIKE
-                qs = qs.filter(Q(nombre__icontains=search) | Q(descripcion__icontains=search))
+                qs = qs.filter(Q(nombre__icontains=search) | Q(descripcion__icontains=search))  # Usando fallback seguro
                 score_field = None
         else:
             score_field = None
@@ -1880,3 +1881,34 @@ class BuscarProductosAPIView(APIView):
             'items': serializer.data
         }
         return Response(response, status=200)
+
+class TodosLosProductos(APIView):
+    """
+    Endpoint que lista todos los productos sin discriminar por categorías.
+    Retorna una lista de objetos producto con id, nombre y estado.
+
+    Ejemplo:
+    [
+        {"id": 1, "nombre": "Producto A", "estado": true},
+        {"id": 2, "nombre": "Producto B", "estado": false}
+    ]
+    """
+    def get(self, request):
+        try:
+            # Obtener todos los productos
+            productos_qs = ProductoBase.objects.all().order_by('id')
+            # Usar el serializer del catálogo para mantener formato consistente con BuscarProductosAPIView
+            serializer = CatalogoProductoSerializer(productos_qs, many=True)
+            total = productos_qs.count()
+            response = {
+                'meta': {
+                    'total': total,
+                },
+                'items': serializer.data
+            }
+            return Response(response, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
