@@ -1,6 +1,6 @@
 from rest_framework import viewsets, status
 from rest_framework.views import APIView
-from .serializers import (CreateOrderItemSerializer, OrderResponseSerializer, OrderResponseSerializerLite, OrderPedidosUsuarioSerializer, RolSerializer, UsuarioSerializer, UsuarioLiteSerializer, UsuarioConPedidosSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer, ProductoPorCategoriaSerializer, CatalogoProductoSerializer)
+from .serializers import (CreateOrderSerializer, OrderResponseSerializer, OrderResponseSerializerLite, OrderPedidosUsuarioSerializer, RolSerializer, UsuarioSerializer, UsuarioLiteSerializer, UsuarioConPedidosSerializer, CategoriaArticuloSerializer, ArticuloSerializer,  CategoriaProductoBaseSerializer, ProductoBaseSerializer, VendedorSerializer, ProductoPorCategoriaSerializer, CatalogoProductoSerializer)
 from .models import (Rol, Usuario, CategoriaArticulo, Articulo, CategoriaProductoBase, ProductoBase, Order, ProductoBaseFoto)
 from django.http import HttpResponse, JsonResponse
 from rest_framework.response import Response
@@ -1517,7 +1517,7 @@ class CreateOrderView(APIView):
     permission_classes = [IsAuthenticated]
     
     def post(self, request, *args, **kwargs):
-        serializer = CreateOrderItemSerializer(
+        serializer = CreateOrderSerializer(
             data=request.data, 
             context={'request': request}
         )

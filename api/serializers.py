@@ -238,7 +238,7 @@ class OrderPedidosUsuarioSerializer(serializers.ModelSerializer):
         return "N/A"
 
 
-class VendedorSerializer(serializers.ModelSerializer):
+class CreateOrderSerializer(serializers.Serializer):
     items = CreateOrderItemSerializer(many=True)
     nombre_receptor = serializers.CharField(max_length=150)
     direccion_entrega = serializers.CharField(max_length=255)
